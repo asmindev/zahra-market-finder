@@ -228,7 +228,7 @@ export default function DetailMarket() {
                                         className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
                                     >
                                         <Navigation className="h-3 w-3 sm:h-4 sm:w-4" />
-                                        <span>Buka di Google Maps</span>
+                                        <span>Buka di Google</span>
                                     </button>
                                     <button
                                         onClick={() => {
