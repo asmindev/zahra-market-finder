@@ -1,0 +1,238 @@
+{
+    "info": {
+        "name": "Market Finder API",
+        "description": "API Collection for Market Finder application",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:5000"
+        }
+    ],
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Register User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"john_doe\",\n    \"email\": \"john@example.com\",\n    \"password\": \"password123\",\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/register",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "register"]
+                        }
+                    }
+                },
+                {
+                    "name": "Login User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"john_doe\",\n    \"password\": \"password123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "login"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get User Profile",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/profile/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "profile", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update User Profile",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"first_name\": \"John Updated\",\n    \"last_name\": \"Doe Updated\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/profile/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "auth", "profile", "1"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Markets",
+            "item": [
+                {
+                    "name": "Get All Markets",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/markets?page=1&per_page=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets"],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Market by ID",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/markets/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Create Market",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"New Market\",\n    \"description\": \"Description of the market\",\n    \"location\": \"Jakarta\",\n    \"latitude\": -6.208763,\n    \"longitude\": 106.845599,\n    \"category\": \"Traditional\",\n    \"opening_hours\": \"06:00 - 18:00\",\n    \"contact_phone\": \"+62-21-1234567\",\n    \"contact_email\": \"info@newmarket.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/markets",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update Market",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Updated Market Name\",\n    \"description\": \"Updated description\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/markets/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Market",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{base_url}}/api/markets/1",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets", "1"]
+                        }
+                    }
+                },
+                {
+                    "name": "Search Markets by Location",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/markets/search/location?latitude=-6.208763&longitude=106.845599&radius=10",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets", "search", "location"],
+                            "query": [
+                                {
+                                    "key": "latitude",
+                                    "value": "-6.208763"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "106.845599"
+                                },
+                                {
+                                    "key": "radius",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Search Markets with Filters",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/markets?search=central&category=Traditional&page=1&per_page=5",
+                            "host": ["{{base_url}}"],
+                            "path": ["api", "markets"],
+                            "query": [
+                                {
+                                    "key": "search",
+                                    "value": "central"
+                                },
+                                {
+                                    "key": "category",
+                                    "value": "Traditional"
+                                },
+                                {
+                                    "key": "page",
+                                    "value": "1"
+                                },
+                                {
+                                    "key": "per_page",
+                                    "value": "5"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}
