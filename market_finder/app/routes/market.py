@@ -285,8 +285,8 @@ def find_nearby_markets():
             logger.warning(f"Invalid limit: {limit}")
             return APIResponse.bad_request("Limit must be an integer between 1 and 50")
 
-        logger.debug(
-            f"Finding {limit} nearest markets to ({latitude}, {longitude}) using GA: {use_ga}"
+        logger.info(
+            f"Finding {limit} nearest markets to ({latitude}, {longitude}) using GA"
         )
 
         # Import GA service
@@ -297,7 +297,6 @@ def find_nearby_markets():
             target_lat=latitude,
             target_lng=longitude,
             limit=limit,
-            use_ga=use_ga,
         )
 
         # Format response
