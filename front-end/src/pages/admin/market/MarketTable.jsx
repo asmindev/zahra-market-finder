@@ -1,5 +1,6 @@
 import React from "react";
 import { Edit, Trash2, MapPin, Eye } from "lucide-react";
+import Loading from "@/layouts/loading";
 
 const MarketTable = ({
     markets,
@@ -10,12 +11,7 @@ const MarketTable = ({
     onDeleteMarket,
 }) => {
     if (loading) {
-        return (
-            <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-                <p className="text-gray-600 mt-2">Memuat data...</p>
-            </div>
-        );
+        return <Loading />;
     }
 
     if (error) {

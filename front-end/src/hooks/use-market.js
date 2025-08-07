@@ -18,6 +18,11 @@ const fetchAPI = async (endpoint, options = {}) => {
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
+        if (response.status === 204) {
+            return {
+                success: true,
+            };
+        }
 
         return await response.json();
     } catch (error) {

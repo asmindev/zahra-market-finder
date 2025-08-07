@@ -358,7 +358,7 @@ const MarketModal = ({
                                     latitude={formData.latitude}
                                     longitude={formData.longitude}
                                     onLocationChange={handleLocationChange}
-                                    className="w-full h-80 md:h-96 rounded-lg"
+                                    className="w-full h-96 rounded-lg"
                                 />
                             </div>
                         </div>

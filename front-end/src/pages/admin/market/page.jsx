@@ -1,19 +1,14 @@
 import React, { useState, Suspense, lazy } from "react";
 import { useMarkets, useMarketMutations } from "@/hooks/use-market";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import Loading from "@/layouts/loading";
 
 // Lazy loading components
 const MarketFilters = lazy(() => import("./MarketFilters"));
 const MarketTable = lazy(() => import("./MarketTable"));
 const MarketModal = lazy(() => import("./MarketModal"));
 const MarketPagination = lazy(() => import("./MarketPagination"));
-
-// Loading component
-const LoadingSpinner = () => (
-    <div className="flex items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
-    </div>
-);
 
 export default function MarketAdmin() {
     const [page, setPage] = useState(1);
@@ -133,6 +128,7 @@ export default function MarketAdmin() {
             closeModal();
         } catch (error) {
             console.error("Error deleting market:", error);
+            toast.error("Gagal menghapus pasar. Coba lagi.");
         }
     };
 
@@ -165,7 +161,7 @@ export default function MarketAdmin() {
             </div>
 
             {/* Filters */}
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={<Loading />}>
                 <MarketFilters
                     search={search}
                     setSearch={setSearch}
@@ -176,7 +172,7 @@ export default function MarketAdmin() {
 
             {/* Table */}
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <Suspense fallback={<LoadingSpinner />}>
+                <Suspense fallback={<Loading />}>
                     <MarketTable
                         markets={markets}
                         loading={loading}
@@ -188,7 +184,7 @@ export default function MarketAdmin() {
                 </Suspense>
 
                 {/* Pagination */}
-                <Suspense fallback={<LoadingSpinner />}>
+                <Suspense fallback={<Loading />}>
                     <MarketPagination
                         pagination={pagination}
                         handlePageChange={handlePageChange}
@@ -197,7 +193,7 @@ export default function MarketAdmin() {
             </div>
 
             {/* Modal */}
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={<Loading />}>
                 <MarketModal
                     isOpen={isOpen}
                     setIsOpen={setIsOpen}

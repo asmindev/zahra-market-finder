@@ -104,7 +104,7 @@ export default function LocationPicker({
     return (
         <div className={`space-y-3 ${className}`}>
             <div className="relative">
-                <div className="w-full h-64 rounded-lg overflow-hidden">
+                <div className="w-full h-128 rounded-lg overflow-hidden">
                     <MapContainer
                         center={[defaultCenter.lat, defaultCenter.lng]}
                         zoom={13}
