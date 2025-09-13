@@ -1,35 +1,36 @@
 import React from "react";
-import {
-    useDashboardStats,
-    useSystemHealth,
-} from "@/hooks/use-dashboard-stats";
+import { useDashboardStats } from "@/hooks/use-dashboard-stats";
 import { useAuth } from "@/contexts/AuthContext";
 import CategoryDistributionChart from "@/components/admin/CategoryDistributionChart";
 import {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
 import {
     MapPin,
-    TrendingUp,
     Users,
     Activity,
     Calendar,
     Search,
-    Database,
-    Zap,
     Plus,
     FileDown,
     Map,
     BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import {
+    Cell,
+    PieChart,
+    Pie,
+    ResponsiveContainer,
+    Tooltip,
+    Legend,
+} from "recharts";
 
 export default function Dashboard() {
     const { user } = useAuth();
@@ -38,7 +39,6 @@ export default function Dashboard() {
         loading: statsLoading,
         error: statsError,
     } = useDashboardStats();
-    const { health } = useSystemHealth();
 
     const statisticsCards = [
         {
@@ -50,28 +50,20 @@ export default function Dashboard() {
             trendUp: true,
         },
         {
+            title: "Pengunjung Hari Ini",
+            value: stats.todayVisitors.toString(),
+            description: "Unique visitors",
+            icon: Users,
+            trend: "+15%",
+            trendUp: true,
+        },
+        {
             title: "Pencarian Hari Ini",
             value: stats.todaySearches.toString(),
             description: "Aktivitas pencarian",
             icon: Search,
             trend: "+8%",
             trendUp: true,
-        },
-        {
-            title: "Pasar Populer",
-            value: stats.popularMarket?.name || "Loading...",
-            description: "Paling banyak dicari",
-            icon: TrendingUp,
-            trend: "64 pencarian",
-            trendUp: true,
-        },
-        {
-            title: "Status System",
-            value: health.apiStatus === "online" ? "Online" : "Offline",
-            description: "Semua service aktif",
-            icon: Activity,
-            trend: "99.9% uptime",
-            trendUp: health.apiStatus === "online",
         },
     ];
 
@@ -142,7 +134,7 @@ export default function Dashboard() {
             </div>
 
             {/* Statistics Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {statisticsCards.map((card, index) => (
                     <Card key={index} className="relative overflow-hidden">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -173,127 +165,353 @@ export default function Dashboard() {
                 ))}
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                {/* Recent Activities */}
-                <Card className="lg:col-span-3">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Activity className="h-5 w-5" />
-                            Aktivitas Terbaru
-                        </CardTitle>
-                        <CardDescription>
-                            Aktivitas sistem dalam 24 jam terakhir
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {stats.recentActivities.map((activity) => (
-                            <div
-                                key={activity.id}
-                                className="flex items-start space-x-3"
-                            >
-                                <div className="p-2 bg-secondary rounded-lg">
-                                    {activity.icon === "MapPin" && (
-                                        <MapPin className="h-4 w-4" />
-                                    )}
-                                    {activity.icon === "Search" && (
-                                        <Search className="h-4 w-4" />
-                                    )}
-                                    {activity.icon === "Activity" && (
-                                        <Activity className="h-4 w-4" />
-                                    )}
+            {/* Recent Activities & Device Analytics Row */}
+            <div className="flex flex-col lg:flex-row-reverse gap-6">
+                {/* Recent Activities - 1/3 width on desktop */}
+                <div className="lg:w-1/3">
+                    <Card className="h-fit">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Activity className="h-5 w-5" />
+                                Aktivitas Terbaru
+                            </CardTitle>
+                            <CardDescription>
+                                Aktivitas sistem dalam 24 jam terakhir
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[350px]">
+                            <div className="h-full overflow-y-auto space-y-2 pr-2">
+                                {stats.recentActivities.map((activity) => (
+                                    <div
+                                        key={activity.id}
+                                        className="flex items-start space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="p-2 bg-secondary rounded-lg">
+                                            {activity.icon === "MapPin" && (
+                                                <MapPin className="h-4 w-4" />
+                                            )}
+                                            {activity.icon === "Search" && (
+                                                <Search className="h-4 w-4" />
+                                            )}
+                                            {activity.icon === "Activity" && (
+                                                <Activity className="h-4 w-4" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <p className="text-sm font-medium">
+                                                {activity.description}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {activity.time}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {stats.recentActivities.length === 0 && (
+                                    <div className="flex items-center justify-center h-full">
+                                        <div className="text-center">
+                                            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                            <p className="text-lg font-medium text-gray-600 mb-2">
+                                                Belum Ada Aktivitas
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Aktivitas sistem akan muncul di
+                                                sini
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Device Analytics - 2/3 width on desktop */}
+                <div className="lg:w-2/3">
+                    <Card className="h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Users className="h-5 w-5" />
+                                Device Analytics
+                            </CardTitle>
+                            <CardDescription>
+                                Distribusi pengunjung berdasarkan jenis
+                                perangkat
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {Object.keys(stats.deviceAnalytics.breakdown)
+                                .length > 0 ? (
+                                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {/* Pie Chart */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-medium text-gray-700">
+                                            Distribusi Visual
+                                        </h3>
+                                        <div className="h-[250px]">
+                                            <ResponsiveContainer
+                                                width="100%"
+                                                height="100%"
+                                            >
+                                                <PieChart>
+                                                    <Pie
+                                                        data={Object.entries(
+                                                            stats
+                                                                .deviceAnalytics
+                                                                .breakdown
+                                                        ).map(
+                                                            ([
+                                                                device,
+                                                                data,
+                                                            ]) => ({
+                                                                name:
+                                                                    device
+                                                                        .charAt(
+                                                                            0
+                                                                        )
+                                                                        .toUpperCase() +
+                                                                    device.slice(
+                                                                        1
+                                                                    ),
+                                                                value: data.count,
+                                                                percentage:
+                                                                    data.percentage,
+                                                            })
+                                                        )}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={40}
+                                                        outerRadius={80}
+                                                        paddingAngle={2}
+                                                        dataKey="value"
+                                                    >
+                                                        {Object.entries(
+                                                            stats
+                                                                .deviceAnalytics
+                                                                .breakdown
+                                                        ).map(
+                                                            (entry, index) => {
+                                                                const colors = [
+                                                                    "#3b82f6",
+                                                                    "#10b981",
+                                                                    "#8b5cf6",
+                                                                    "#f59e0b",
+                                                                ];
+                                                                return (
+                                                                    <Cell
+                                                                        key={`cell-${index}`}
+                                                                        fill={
+                                                                            colors[
+                                                                                index %
+                                                                                    colors.length
+                                                                            ]
+                                                                        }
+                                                                    />
+                                                                );
+                                                            }
+                                                        )}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        contentStyle={{
+                                                            backgroundColor:
+                                                                "white",
+                                                            border: "1px solid #e2e8f0",
+                                                            borderRadius: "8px",
+                                                            boxShadow:
+                                                                "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                                                        }}
+                                                        formatter={(value) => [
+                                                            value,
+                                                            "Pengunjung",
+                                                        ]}
+                                                    />
+                                                    <Legend
+                                                        verticalAlign="bottom"
+                                                        height={36}
+                                                        wrapperStyle={{
+                                                            fontSize: "12px",
+                                                        }}
+                                                    />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+
+                                    {/* Device Details */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-medium text-gray-700">
+                                            Detail Perangkat
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {Object.entries(
+                                                stats.deviceAnalytics.breakdown
+                                            ).map(([device, data], index) => {
+                                                const colors = [
+                                                    "#3b82f6",
+                                                    "#10b981",
+                                                    "#8b5cf6",
+                                                    "#f59e0b",
+                                                ];
+                                                const bgColors = [
+                                                    "bg-blue-50",
+                                                    "bg-green-50",
+                                                    "bg-purple-50",
+                                                    "bg-yellow-50",
+                                                ];
+                                                return (
+                                                    <div
+                                                        key={device}
+                                                        className={`p-4 rounded-lg border ${
+                                                            bgColors[
+                                                                index %
+                                                                    bgColors.length
+                                                            ]
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div
+                                                                    className="w-3 h-3 rounded-full"
+                                                                    style={{
+                                                                        backgroundColor:
+                                                                            colors[
+                                                                                index %
+                                                                                    colors.length
+                                                                            ],
+                                                                    }}
+                                                                ></div>
+                                                                <span className="font-medium capitalize text-sm">
+                                                                    {device}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-sm text-gray-600">
+                                                                {
+                                                                    data.percentage
+                                                                }
+                                                                %
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-xs text-gray-500">
+                                                                Sessions
+                                                            </span>
+                                                            <span
+                                                                className="font-bold text-lg"
+                                                                style={{
+                                                                    color: colors[
+                                                                        index %
+                                                                            colors.length
+                                                                    ],
+                                                                }}
+                                                            >
+                                                                {data.count}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Summary Stats */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-medium text-gray-700">
+                                            Ringkasan
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                                                <div className="text-center">
+                                                    <p className="text-sm text-blue-600 font-medium">
+                                                        Total Sessions
+                                                    </p>
+                                                    <p className="text-3xl font-bold text-blue-700">
+                                                        {
+                                                            stats
+                                                                .deviceAnalytics
+                                                                .total_sessions
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                                                <div className="text-center">
+                                                    <p className="text-sm text-green-600 font-medium">
+                                                        Device Types
+                                                    </p>
+                                                    <p className="text-3xl font-bold text-green-700">
+                                                        {
+                                                            Object.keys(
+                                                                stats
+                                                                    .deviceAnalytics
+                                                                    .breakdown
+                                                            ).length
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                                                <div className="text-center">
+                                                    <p className="text-sm text-purple-600 font-medium">
+                                                        Most Popular
+                                                    </p>
+                                                    <p className="text-lg font-bold text-purple-700">
+                                                        {Object.entries(
+                                                            stats
+                                                                .deviceAnalytics
+                                                                .breakdown
+                                                        )
+                                                            .sort(
+                                                                (
+                                                                    [, a],
+                                                                    [, b]
+                                                                ) =>
+                                                                    b.count -
+                                                                    a.count
+                                                            )[0]?.[0]
+                                                            ?.charAt(0)
+                                                            .toUpperCase() +
+                                                            Object.entries(
+                                                                stats
+                                                                    .deviceAnalytics
+                                                                    .breakdown
+                                                            )
+                                                                .sort(
+                                                                    (
+                                                                        [, a],
+                                                                        [, b]
+                                                                    ) =>
+                                                                        b.count -
+                                                                        a.count
+                                                                )[0]?.[0]
+                                                                ?.slice(1) ||
+                                                            "N/A"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex-1 space-y-1">
-                                    <p className="text-sm font-medium">
-                                        {activity.description}
+                            ) : (
+                                <div className="text-center py-12">
+                                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-lg font-medium text-gray-600 mb-2">
+                                        Belum Ada Data Device
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {activity.time}
+                                    <p className="text-sm text-gray-500">
+                                        Data analytics perangkat akan muncul
+                                        setelah ada aktivitas pengguna
                                     </p>
                                 </div>
-                            </div>
-                        ))}
-                        {stats.recentActivities.length === 0 && (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                                Belum ada aktivitas hari ini
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* System Health */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Database className="h-5 w-5" />
-                            System Health
-                        </CardTitle>
-                        <CardDescription>
-                            Status sistem dan performa
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm">API Status</span>
-                                <Badge
-                                    variant="default"
-                                    className={
-                                        health.apiStatus === "online"
-                                            ? "bg-green-500"
-                                            : "bg-red-500"
-                                    }
-                                >
-                                    {health.apiStatus === "online"
-                                        ? "Online"
-                                        : "Offline"}
-                                </Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm">Database</span>
-                                <Badge
-                                    variant="default"
-                                    className={
-                                        health.dbStatus === "connected"
-                                            ? "bg-green-500"
-                                            : "bg-red-500"
-                                    }
-                                >
-                                    {health.dbStatus === "connected"
-                                        ? "Connected"
-                                        : "Disconnected"}
-                                </Badge>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm">Avg Response</span>
-                                <span className="text-sm font-medium">
-                                    {health.avgResponseTime}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm">Error Rate</span>
-                                <span className="text-sm font-medium">
-                                    {health.errorRate}
-                                </span>
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        <Alert>
-                            <Zap className="h-4 w-4" />
-                            <AlertDescription className="text-sm">
-                                Sistem berjalan dengan normal. Genetic Algorithm
-                                aktif untuk optimisasi pencarian.
-                            </AlertDescription>
-                        </Alert>
-                    </CardContent>
-                </Card>
-
-                {/* Category Distribution Chart */}
-                <div className="lg:col-span-2">
-                    <CategoryDistributionChart data={stats.marketsByCategory} />
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
+
+            {/* Category Distribution Chart - Full Width */}
+            <CategoryDistributionChart data={stats.marketsByCategory} />
 
             {/* Quick Actions */}
             <Card>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 const API_BASE_URL =
-    import.meta.env.VITE_BASE_API_URL || "http://localhost:8000";
+    import.meta.env.VITE_BASE_API_URL || "http://localhost:5000";
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -40,15 +40,24 @@ const fetchDashboardAPI = async (endpoint) => {
 export const useDashboardStats = () => {
     const [stats, setStats] = useState({
         totalMarkets: 0,
+        todayVisitors: 0,
         todaySearches: 0,
-        popularMarket: null,
+        popularMarkets: [],
         recentActivities: [],
         marketsByCategory: {},
+        deviceAnalytics: {
+            total_sessions: 0,
+            breakdown: {},
+        },
+        monthlyVisitors: {
+            average_monthly: 0,
+            monthly_data: [],
+        },
         systemHealth: {
-            apiStatus: "online",
-            dbStatus: "connected",
-            avgResponseTime: "145ms",
-            errorRate: "0.2%",
+            api_status: "online",
+            db_status: "connected",
+            avg_response_time: "145ms",
+            error_rate: "0.2%",
         },
     });
     const [loading, setLoading] = useState(true);
@@ -59,77 +68,46 @@ export const useDashboardStats = () => {
             setLoading(true);
             setError(null);
 
-            // Fetch markets data for statistics
-            const marketsData = await fetchDashboardAPI(
-                "/api/markets/?per_page=100"
+            // Fetch comprehensive dashboard analytics from new endpoint
+            const analyticsData = await fetchDashboardAPI(
+                "/api/analytics/dashboard"
             );
 
-            if (marketsData.success && marketsData.data) {
-                const markets = marketsData.data;
+            if (analyticsData.success && analyticsData.data) {
+                const data = analyticsData.data;
 
-                // Calculate category distribution
-                const categoryCount = {};
-                markets.forEach((market) => {
-                    const category = market.category || "Umum";
-                    categoryCount[category] =
-                        (categoryCount[category] || 0) + 1;
-                });
-
-                // Find most popular market (first one for now, would be based on search frequency in real app)
-                const popularMarket = markets.length > 0 ? markets[0] : null;
-
-                // Generate mock recent activities based on real data
-                const recentActivities = [
-                    {
-                        id: 1,
-                        type: "market_added",
-                        description: `Pasar ${
-                            markets[0]?.name || "Baru"
-                        } ditambahkan`,
-                        time: "2 jam yang lalu",
-                        icon: "MapPin",
-                    },
-                    {
-                        id: 2,
-                        type: "search",
-                        description: "Pencarian baru dari Jakarta Selatan",
-                        time: "3 jam yang lalu",
-                        icon: "Search",
-                    },
-                    {
-                        id: 3,
-                        type: "market_updated",
-                        description: `Informasi ${
-                            markets[1]?.name || "Pasar"
-                        } diperbarui`,
-                        time: "5 jam yang lalu",
-                        icon: "Activity",
-                    },
-                ].filter(
-                    (activity) =>
-                        activity.description.includes("undefined") === false
-                );
-
+                // Transform the data to match our frontend structure
                 setStats({
-                    totalMarkets: markets.length,
-                    todaySearches: Math.floor(Math.random() * 100) + 50, // Mock data
-                    popularMarket,
-                    recentActivities,
-                    marketsByCategory: categoryCount,
-                    systemHealth: {
-                        apiStatus: "online",
-                        dbStatus: "connected",
-                        avgResponseTime: "145ms",
-                        errorRate: "0.2%",
+                    totalMarkets: data.total_markets || 0,
+                    todayVisitors: data.today_visitors || 0,
+                    todaySearches: data.today_searches || 0,
+                    popularMarkets: data.popular_markets || [],
+                    recentActivities: data.recent_activities || [],
+                    marketsByCategory: data.markets_by_category || {},
+                    deviceAnalytics: data.device_analytics || {
+                        total_sessions: 0,
+                        breakdown: {},
+                    },
+                    monthlyVisitors: data.monthly_visitors || {
+                        average_monthly: 0,
+                        monthly_data: [],
+                    },
+                    systemHealth: data.system_health || {
+                        api_status: "online",
+                        db_status: "connected",
+                        avg_response_time: "145ms",
+                        error_rate: "0.2%",
                     },
                 });
             }
         } catch (err) {
+            console.error("Failed to fetch dashboard stats:", err);
             setError(err.message);
-            // Set fallback data
+            // Set fallback data on error
             setStats((prev) => ({
                 ...prev,
                 totalMarkets: 0,
+                todayVisitors: 0,
                 todaySearches: 0,
             }));
         } finally {
@@ -139,6 +117,11 @@ export const useDashboardStats = () => {
 
     useEffect(() => {
         fetchStats();
+
+        // Refresh data every 30 seconds for real-time updates
+        const interval = setInterval(fetchStats, 30000);
+
+        return () => clearInterval(interval);
     }, []);
 
     const refetch = () => {
@@ -156,36 +139,33 @@ export const useDashboardStats = () => {
 // Hook for system health monitoring
 export const useSystemHealth = () => {
     const [health, setHealth] = useState({
-        apiStatus: "checking",
-        dbStatus: "checking",
-        avgResponseTime: "...",
-        errorRate: "...",
-        lastChecked: new Date().toISOString(),
+        api_status: "checking",
+        db_status: "checking",
+        avg_response_time: "...",
+        error_rate: "...",
+        last_checked: new Date().toISOString(),
     });
 
     const checkHealth = async () => {
         try {
-            const startTime = Date.now();
+            // Use the dedicated system health endpoint
+            const healthData = await fetchDashboardAPI(
+                "/api/analytics/system-health"
+            );
 
-            // Try to fetch a simple endpoint to check API health
-            await fetchDashboardAPI("/api/markets/?per_page=1");
-
-            const responseTime = Date.now() - startTime;
-
-            setHealth({
-                apiStatus: "online",
-                dbStatus: "connected",
-                avgResponseTime: `${responseTime}ms`,
-                errorRate: "0.2%", // Mock data
-                lastChecked: new Date().toISOString(),
-            });
+            if (healthData.success && healthData.data) {
+                setHealth({
+                    ...healthData.data,
+                    last_checked: new Date().toISOString(),
+                });
+            }
         } catch (err) {
             console.error("Health check failed:", err);
             setHealth((prev) => ({
                 ...prev,
-                apiStatus: "offline",
-                dbStatus: "disconnected",
-                lastChecked: new Date().toISOString(),
+                api_status: "offline",
+                db_status: "disconnected",
+                last_checked: new Date().toISOString(),
             }));
         }
     };
@@ -193,8 +173,8 @@ export const useSystemHealth = () => {
     useEffect(() => {
         checkHealth();
 
-        // Check health every 5 minutes
-        const interval = setInterval(checkHealth, 5 * 60 * 1000);
+        // Check health every 2 minutes
+        const interval = setInterval(checkHealth, 2 * 60 * 1000);
 
         return () => clearInterval(interval);
     }, []);

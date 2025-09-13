@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router";
 import {
     Search,
@@ -15,11 +15,22 @@ import AnimatedOutlet from "./animated_outlet";
 import { Suspense } from "react";
 import Loading from "./loading";
 import { useSearch } from "../hooks/use-search";
+import { useVisitorTracking } from "../utils/visitorTracker";
 
 export default function RootLayout() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Initialize visitor tracking
+    const { isInitialized, trackPageView } = useVisitorTracking();
+
+    // Track page views when location changes
+    useEffect(() => {
+        if (isInitialized) {
+            trackPageView(location.pathname + location.search, document.title);
+        }
+    }, [location, isInitialized, trackPageView]);
 
     const navigationItems = [
         { to: "/", label: "Beranda" },

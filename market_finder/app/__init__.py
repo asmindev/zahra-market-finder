@@ -33,9 +33,11 @@ def create_app(config_name="default"):
     # Register blueprints
     from app.routes.market import market_bp
     from app.routes.auth import auth_bp
+    from app.routes.analytics import analytics_bp
 
     app.register_blueprint(market_bp, url_prefix="/api/markets")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(analytics_bp)
     logger.info("Blueprints registered successfully")
 
     logger.info("Flask application created successfully")
