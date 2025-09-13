@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.market import MarketService
 from app.utils.response import APIResponse, RequestValidator
+from app.utils.auth import admin_required, token_required
 from app.logging import get_logger
 
 # Setup logging
@@ -74,6 +75,7 @@ def get_market(market_id):
 
 
 @market_bp.route("/", methods=["POST"])
+@admin_required
 def create_market():
     """Create new market"""
     logger.info("POST /api/markets - Creating new market")
@@ -108,6 +110,7 @@ def create_market():
 
 
 @market_bp.route("/<int:market_id>", methods=["PUT"])
+@admin_required
 def update_market(market_id):
     """Update market"""
     logger.info(f"PUT /api/markets/{market_id} - Updating market")
@@ -135,6 +138,7 @@ def update_market(market_id):
 
 
 @market_bp.route("/<int:market_id>", methods=["DELETE"])
+@admin_required
 def delete_market(market_id):
     """Delete market"""
     logger.info(f"DELETE /api/markets/{market_id} - Deleting market")

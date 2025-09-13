@@ -1,4 +1,13 @@
 import os
+import sys
+
+# detect virtual environment is activated
+if "VIRTUAL_ENV" not in os.environ:
+    print(
+        "❌ Virtual environment is not activated. Please activate it before running the script."
+    )
+    sys.exit(1)
+
 from app import create_app, db
 from app.models import Market, User
 from app.config.config import config

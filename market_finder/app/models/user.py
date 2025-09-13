@@ -1,6 +1,8 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from flask import current_app
 
 
 class User(db.Model):
@@ -26,6 +28,34 @@ class User(db.Model):
     def check_password(self, password):
         """Check password"""
         return check_password_hash(self.password, password)
+
+    def generate_token(self, expires_delta=None):
+        """Generate JWT token"""
+        if expires_delta is None:
+            expires_delta = timedelta(hours=24)
+
+        payload = {
+            "user_id": self.id,
+            "username": self.username,
+            "is_admin": self.is_admin,
+            "exp": datetime.utcnow() + expires_delta,
+            "iat": datetime.utcnow(),
+        }
+
+        return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
+
+    @staticmethod
+    def verify_token(token):
+        """Verify JWT token"""
+        try:
+            payload = jwt.decode(
+                token, current_app.config["SECRET_KEY"], algorithms=["HS256"]
+            )
+            return payload
+        except jwt.ExpiredSignatureError:
+            return None
+        except jwt.InvalidTokenError:
+            return None
 
     def to_dict(self):
         """Convert model to dictionary"""

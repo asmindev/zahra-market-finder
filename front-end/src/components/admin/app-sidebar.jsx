@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react";
+import { Calendar, Home, Inbox, Search, Settings, LogOut } from "lucide-react";
 
 import {
     Sidebar,
@@ -10,7 +10,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Menu items.
 const items = [
@@ -27,6 +28,14 @@ const items = [
 ];
 
 export function AppSidebar() {
+    const { logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate("/");
+    };
+
     return (
         <Sidebar className={""}>
             <SidebarContent className="bg-gray-100">
@@ -57,6 +66,23 @@ export function AppSidebar() {
                                     <span>{item.title}</span>
                                 </NavLink>
                             ))}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Logout Section */}
+                <SidebarGroup className={"p-4 mt-auto"}>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center space-x-2 p-2 rounded-md transition-colors text-red-600 hover:bg-red-50 w-full text-left"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    <span>Logout</span>
+                                </button>
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

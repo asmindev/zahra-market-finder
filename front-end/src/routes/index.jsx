@@ -9,6 +9,8 @@ import Home from "@/pages/home/page.jsx";
 import MarketAdmin from "@/pages/admin/market/page.jsx";
 import NotFound from "@/pages/errors/404";
 import DetailMarket from "@/pages/market/detail-market";
+import SignIn from "@/pages/auth/signin/page.jsx";
+import { ProtectedRoute } from "@/components/ProtectedRoute.jsx";
 
 const Market = lazy(() => import("@/pages/market/page.jsx"));
 
@@ -22,11 +24,22 @@ export default function Router() {
             </Route>
 
             {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route
+                path="/admin"
+                element={
+                    <ProtectedRoute requireAdmin={true}>
+                        <AdminLayout />
+                    </ProtectedRoute>
+                }
+            >
                 <Route index element={<Dashboard />} />
                 <Route path="market" element={<MarketAdmin />} />
                 {/* Add more admin routes here */}
             </Route>
+
+            {/* Auth Routes */}
+            <Route path="/auth/signin" element={<SignIn />} />
+
             {/* error page */}
             <Route path="*" element={<NotFound />} />
         </Routes>
