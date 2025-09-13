@@ -154,3 +154,6 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# uploaded images
+uploads/
