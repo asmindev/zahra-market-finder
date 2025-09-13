@@ -4,18 +4,37 @@ import { useState, useEffect } from "react";
 const API_BASE_URL =
     import.meta.env.VITE_BASE_API_URL || "http://localhost:8000";
 
+// Get auth token from localStorage
+const getAuthToken = () => {
+    return localStorage.getItem("token");
+};
+
 // Generic fetch function with error handling
 const fetchAPI = async (endpoint, options = {}) => {
     try {
+        const token = getAuthToken();
+        const headers = {
+            "Content-Type": "application/json",
+            ...options.headers,
+        };
+
+        // Add authorization header if token exists
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: {
-                "Content-Type": "application/json",
-                ...options.headers,
-            },
+            headers,
             ...options,
         });
 
         if (!response.ok) {
+            if (response.status === 401) {
+                // Token expired or invalid
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                throw new Error("Sesi telah berakhir. Silakan login kembali.");
+            }
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         if (response.status === 204) {
@@ -55,13 +74,18 @@ export const useMarkets = (params = {}) => {
 
                 const data = await fetchAPI(`/api/markets/?${queryParams}`);
 
-                setMarkets(data.results || data.data || []);
-                setPagination({
-                    page: data.page || page,
-                    per_page: data.per_page || per_page,
-                    total: data.total || 0,
-                    total_pages: data.total_pages || 0,
-                });
+                setMarkets(data.data || []);
+
+                // Map pagination from API response structure
+                const paginationData = data.meta?.pagination || {};
+                const mappedPagination = {
+                    current_page: paginationData.current_page || page,
+                    per_page: paginationData.per_page || per_page,
+                    total: paginationData.total_items || 0,
+                    total_pages: paginationData.total_pages || 0,
+                };
+
+                setPagination(mappedPagination);
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -87,13 +111,18 @@ export const useMarkets = (params = {}) => {
 
                 const data = await fetchAPI(`/api/markets/?${queryParams}`);
 
-                setMarkets(data.results || data.data || []);
-                setPagination({
-                    page: data.page || page,
-                    per_page: data.per_page || per_page,
-                    total: data.total || 0,
-                    total_pages: data.total_pages || 0,
-                });
+                setMarkets(data.data || []);
+
+                // Map pagination from API response structure
+                const paginationData = data.meta?.pagination || {};
+                const mappedPagination = {
+                    current_page: paginationData.current_page || page,
+                    per_page: paginationData.per_page || per_page,
+                    total: paginationData.total_items || 0,
+                    total_pages: paginationData.total_pages || 0,
+                };
+
+                setPagination(mappedPagination);
             } catch (err) {
                 setError(err.message);
             } finally {

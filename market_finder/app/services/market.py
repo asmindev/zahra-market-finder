@@ -1,5 +1,5 @@
 from app import db
-from app.models.market import Market
+from app.models.market import Market, MarketCategory
 from app.logging import get_logger
 from sqlalchemy import or_
 
@@ -30,9 +30,18 @@ class MarketService:
                 )
             )
 
-        # Apply category filter (remove this as Market model doesn't have category field)
-        # if category:
-        #     query = query.filter(Market.category == category)
+        # Apply category filter
+        if category:
+            logger.debug(f"Applying category filter: {category}")
+            # Convert string to enum if needed
+            if isinstance(category, str):
+                try:
+                    category_enum = MarketCategory(category)
+                    query = query.filter(Market.category == category_enum)
+                except ValueError:
+                    logger.warning(f"Invalid category: {category}")
+            else:
+                query = query.filter(Market.category == category)
 
         # Order by name
         query = query.order_by(Market.name)
@@ -77,6 +86,20 @@ class MarketService:
         market.latitude = data.get("latitude")
         market.longitude = data.get("longitude")
 
+        # Handle category
+        category = data.get("category")
+        if category:
+            if isinstance(category, str):
+                try:
+                    market.category = MarketCategory(category)
+                except ValueError:
+                    logger.warning(f"Invalid category: {category}, using default")
+                    market.category = MarketCategory.GENERAL
+            else:
+                market.category = category
+        else:
+            market.category = MarketCategory.GENERAL
+
         db.session.add(market)
         db.session.commit()
 
@@ -96,6 +119,16 @@ class MarketService:
         # Update fields
         for key, value in data.items():
             if hasattr(market, key) and key != "id":
+                if key == "category" and value:
+                    # Handle category conversion
+                    if isinstance(value, str):
+                        try:
+                            value = MarketCategory(value)
+                        except ValueError:
+                            logger.warning(
+                                f"Invalid category: {value}, skipping update"
+                            )
+                            continue
                 logger.debug(f"Updating {key}: {getattr(market, key)} -> {value}")
                 setattr(market, key, value)
 

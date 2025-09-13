@@ -1,7 +1,11 @@
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, Suspense, lazy, useEffect } from "react";
 import { useMarkets, useMarketMutations } from "@/hooks/use-market";
-import { Plus } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useAuth } from "@/contexts/AuthContext";
+import { Plus, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Loading from "@/layouts/loading";
 
 // Lazy loading components
@@ -11,7 +15,9 @@ const MarketModal = lazy(() => import("./MarketModal"));
 const MarketPagination = lazy(() => import("./MarketPagination"));
 
 export default function MarketAdmin() {
+    const { isAuthenticated, isAdmin, token } = useAuth();
     const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(10);
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("");
     const [isOpen, setIsOpen] = useState(false);
@@ -26,11 +32,14 @@ export default function MarketAdmin() {
         category: "",
     });
 
+    // Debounce search to avoid too many API calls
+    const debouncedSearch = useDebounce(search, 500);
+
     // Hooks
     const { markets, loading, error, pagination, refetch } = useMarkets({
         page,
-        per_page: 10,
-        search,
+        per_page: perPage,
+        search: debouncedSearch,
         category,
     });
 
@@ -41,8 +50,18 @@ export default function MarketAdmin() {
         loading: mutationLoading,
     } = useMarketMutations();
 
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch, category, perPage]);
+
     // Modal handlers
     const openCreateModal = () => {
+        if (!isAuthenticated() || !isAdmin()) {
+            toast.error("Anda harus login sebagai admin untuk menambah pasar.");
+            return;
+        }
+
         setModalMode("create");
         setFormData({
             name: "",
@@ -56,6 +75,11 @@ export default function MarketAdmin() {
     };
 
     const openEditModal = (market) => {
+        if (!isAuthenticated() || !isAdmin()) {
+            toast.error("Anda harus login sebagai admin untuk mengedit pasar.");
+            return;
+        }
+
         setModalMode("edit");
         setSelectedMarket(market);
         setFormData({
@@ -76,6 +100,13 @@ export default function MarketAdmin() {
     };
 
     const openDeleteModal = (market) => {
+        if (!isAuthenticated() || !isAdmin()) {
+            toast.error(
+                "Anda harus login sebagai admin untuk menghapus pasar."
+            );
+            return;
+        }
+
         setModalMode("delete");
         setSelectedMarket(market);
         setIsOpen(true);
@@ -105,40 +136,91 @@ export default function MarketAdmin() {
     };
 
     const handleSubmit = async () => {
+        if (!isAuthenticated() || !isAdmin()) {
+            toast.error(
+                "Anda harus login sebagai admin untuk menyimpan data pasar."
+            );
+            closeModal();
+            return;
+        }
+
         try {
             if (modalMode === "create") {
                 await createMarket(formData);
+                toast.success("Pasar berhasil ditambahkan!");
             } else if (modalMode === "edit") {
                 await updateMarket(selectedMarket.id, formData);
+                toast.success("Pasar berhasil diupdate!");
             }
 
             refetch();
             closeModal();
         } catch (error) {
             console.error("Error saving market:", error);
+            if (error.message.includes("Sesi telah berakhir")) {
+                toast.error("Sesi Anda telah berakhir. Silakan login kembali.");
+            } else {
+                toast.error("Gagal menyimpan data pasar. Coba lagi.");
+            }
         }
     };
 
     const handleDelete = async () => {
         if (!selectedMarket) return;
 
+        if (!isAuthenticated() || !isAdmin()) {
+            toast.error(
+                "Anda harus login sebagai admin untuk menghapus pasar."
+            );
+            closeModal();
+            return;
+        }
+
         try {
             await deleteMarket(selectedMarket.id);
+            toast.success("Pasar berhasil dihapus!");
             refetch();
             closeModal();
         } catch (error) {
             console.error("Error deleting market:", error);
-            toast.error("Gagal menghapus pasar. Coba lagi.");
+            if (error.message.includes("Sesi telah berakhir")) {
+                toast.error("Sesi Anda telah berakhir. Silakan login kembali.");
+            } else {
+                toast.error("Gagal menghapus pasar. Coba lagi.");
+            }
         }
     };
 
     // Pagination handlers
     const handlePageChange = (newPage) => {
-        setPage(newPage);
+        if (newPage >= 1 && newPage <= (pagination?.total_pages || 1)) {
+            setPage(newPage);
+        }
+    };
+
+    const handlePerPageChange = (newPerPage) => {
+        setPerPage(newPerPage);
+        setPage(1); // Reset to first page when changing per page
     };
 
     return (
         <div className="w-full border rounded-xl p-4 sm:p-6 bg-gray-50 min-h-screen">
+            {/* Admin access warning */}
+            {(!isAuthenticated() || !isAdmin()) && (
+                <Alert className="mb-6 border-amber-200 bg-amber-50">
+                    <Lock className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-800">
+                        <strong>Peringatan:</strong> Beberapa fitur (tambah,
+                        edit, hapus pasar) memerlukan login sebagai admin.
+                        {!isAuthenticated() &&
+                            " Silakan login terlebih dahulu."}
+                        {isAuthenticated() &&
+                            !isAdmin() &&
+                            " Akun Anda tidak memiliki akses admin."}
+                    </AlertDescription>
+                </Alert>
+            )}
+
             {/* Header */}
             <div className="mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -150,13 +232,14 @@ export default function MarketAdmin() {
                             Kelola data pasar tradisional
                         </p>
                     </div>
-                    <button
+                    <Button
                         onClick={openCreateModal}
-                        className="inline-flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+                        className="inline-flex items-center space-x-2"
+                        disabled={!isAuthenticated() || !isAdmin()}
                     >
                         <Plus className="h-4 w-4" />
                         <span>Tambah Pasar</span>
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -167,6 +250,8 @@ export default function MarketAdmin() {
                     setSearch={setSearch}
                     category={category}
                     setCategory={setCategory}
+                    perPage={perPage}
+                    setPerPage={handlePerPageChange}
                 />
             </Suspense>
 
@@ -180,6 +265,7 @@ export default function MarketAdmin() {
                         onViewMarket={openViewModal}
                         onEditMarket={openEditModal}
                         onDeleteMarket={openDeleteModal}
+                        isAdmin={isAuthenticated() && isAdmin()}
                     />
                 </Suspense>
 

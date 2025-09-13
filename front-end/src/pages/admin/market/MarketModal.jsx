@@ -332,8 +332,7 @@ const MarketModal = ({
                                             Tradisional
                                         </option>
                                         <option value="modern">Modern</option>
-                                        <option value="sayur">Sayur</option>
-                                        <option value="buah">Buah</option>
+                                        <option value="umum">Umum</option>
                                     </select>
                                 </div>
 
