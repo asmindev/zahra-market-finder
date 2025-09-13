@@ -1,5 +1,6 @@
 from app import db
-from app.models.market import Market, MarketCategory
+from app.models.market import Market, MarketCategory, MarketImage
+from app.utils.file_handler import FileHandler
 from app.logging import get_logger
 from sqlalchemy import or_
 
@@ -75,8 +76,8 @@ class MarketService:
         return market
 
     @staticmethod
-    def create_market(data):
-        """Create new market"""
+    def create_market(data, files=None):
+        """Create new market with optional images"""
         logger.info(f"Creating new market: {data.get('name')}")
 
         market = Market()
@@ -101,14 +102,36 @@ class MarketService:
             market.category = MarketCategory.GENERAL
 
         db.session.add(market)
+        db.session.flush()  # Flush to get the market ID
+
+        # Handle image uploads
+        if files:
+            for file in files:
+                try:
+                    file_info = FileHandler.save_file(file)
+                    if file_info:
+                        market_image = MarketImage(
+                            market_id=market.id,
+                            filename=file_info["filename"],
+                            original_filename=file_info["original_filename"],
+                            file_path=file_info["file_path"],
+                            file_size=file_info["file_size"],
+                            mime_type=file_info["mime_type"],
+                        )
+                        db.session.add(market_image)
+                        logger.info(f"Added image: {file_info['original_filename']}")
+                except Exception as e:
+                    logger.error(f"Error saving image: {str(e)}")
+                    # Continue with other images even if one fails
+
         db.session.commit()
 
         logger.info(f"Successfully created market with ID: {market.id}")
         return market
 
     @staticmethod
-    def update_market(market_id, data):
-        """Update market"""
+    def update_market(market_id, data, files=None, delete_image_ids=None):
+        """Update market with image management"""
         logger.info(f"Updating market with ID: {market_id}")
 
         market = Market.query.filter_by(id=market_id, is_active=True).first()
@@ -116,9 +139,9 @@ class MarketService:
             logger.warning(f"Market not found for update with ID: {market_id}")
             return None
 
-        # Update fields
+        # Update market fields
         for key, value in data.items():
-            if hasattr(market, key) and key != "id":
+            if hasattr(market, key) and key not in ["id", "images"]:
                 if key == "category" and value:
                     # Handle category conversion
                     if isinstance(value, str):
@@ -132,13 +155,47 @@ class MarketService:
                 logger.debug(f"Updating {key}: {getattr(market, key)} -> {value}")
                 setattr(market, key, value)
 
+        # Handle image deletions
+        if delete_image_ids:
+            for image_id in delete_image_ids:
+                image = MarketImage.query.filter_by(
+                    id=image_id, market_id=market_id
+                ).first()
+                if image:
+                    # Delete file from filesystem
+                    FileHandler.delete_file(image.file_path)
+                    # Delete from database
+                    db.session.delete(image)
+                    logger.info(f"Deleted image: {image.original_filename}")
+
+        # Handle new image uploads
+        if files:
+            for file in files:
+                try:
+                    file_info = FileHandler.save_file(file)
+                    if file_info:
+                        market_image = MarketImage(
+                            market_id=market.id,
+                            filename=file_info["filename"],
+                            original_filename=file_info["original_filename"],
+                            file_path=file_info["file_path"],
+                            file_size=file_info["file_size"],
+                            mime_type=file_info["mime_type"],
+                        )
+                        db.session.add(market_image)
+                        logger.info(
+                            f"Added new image: {file_info['original_filename']}"
+                        )
+                except Exception as e:
+                    logger.error(f"Error saving new image: {str(e)}")
+
         db.session.commit()
         logger.info(f"Successfully updated market: {market.name}")
         return market
 
     @staticmethod
     def delete_market(market_id):
-        """Soft delete market"""
+        """Soft delete market and cleanup images"""
         logger.info(f"Deleting market with ID: {market_id}")
 
         market = Market.query.filter_by(id=market_id, is_active=True).first()
@@ -146,6 +203,12 @@ class MarketService:
             logger.warning(f"Market not found for deletion with ID: {market_id}")
             return False
 
+        # Delete all associated images from filesystem
+        for image in market.images:
+            FileHandler.delete_file(image.file_path)
+            logger.info(f"Deleted image file: {image.original_filename}")
+
+        # Soft delete market (images will be deleted by cascade)
         market.is_active = False
         db.session.commit()
 

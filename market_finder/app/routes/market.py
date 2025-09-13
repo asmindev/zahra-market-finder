@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_from_directory
+import json
+import os
 from app.services.market import MarketService
 from app.utils.response import APIResponse, RequestValidator
 from app.utils.auth import admin_required, token_required
@@ -77,17 +79,31 @@ def get_market(market_id):
 @market_bp.route("/", methods=["POST"])
 @admin_required
 def create_market():
-    """Create new market"""
+    """Create new market with optional images"""
     logger.info("POST /api/markets - Creating new market")
 
     try:
-        data = request.get_json()
-        logger.debug(f"Request data: {data}")
+        # Handle multipart form data
+        data = {}
 
-        # Validate request data
-        if not data:
-            logger.warning("Empty request body")
-            return APIResponse.bad_request("Request body is required")
+        # Get form data
+        for key in request.form:
+            data[key] = request.form.get(key)
+
+        # Convert latitude and longitude to float if provided
+        if "latitude" in data and data["latitude"]:
+            try:
+                data["latitude"] = float(data["latitude"])
+            except ValueError:
+                pass
+
+        if "longitude" in data and data["longitude"]:
+            try:
+                data["longitude"] = float(data["longitude"])
+            except ValueError:
+                pass
+
+        logger.debug(f"Request data: {data}")
 
         # Validate required fields
         required_fields = ["name", "location"]
@@ -99,7 +115,10 @@ def create_market():
             logger.warning(f"Validation errors: {validation_errors}")
             return APIResponse.validation_error(validation_errors)
 
-        market = MarketService.create_market(data)
+        # Get uploaded files
+        files = request.files.getlist("images") if "images" in request.files else None
+
+        market = MarketService.create_market(data, files)
 
         logger.info(f"Successfully created market: {market.name} with ID: {market.id}")
         return APIResponse.created(market.to_dict(), "Market created successfully")
@@ -112,18 +131,55 @@ def create_market():
 @market_bp.route("/<int:market_id>", methods=["PUT"])
 @admin_required
 def update_market(market_id):
-    """Update market"""
+    """Update market with image management"""
     logger.info(f"PUT /api/markets/{market_id} - Updating market")
 
     try:
-        data = request.get_json()
+        # Handle multipart form data
+        data = {}
+
+        # Get form data
+        for key in request.form:
+            if key not in ["delete_images"]:  # Handle delete_images separately
+                data[key] = request.form.get(key)
+
+        # Convert latitude and longitude to float if provided
+        if "latitude" in data and data["latitude"]:
+            try:
+                data["latitude"] = float(data["latitude"])
+            except ValueError:
+                pass
+
+        if "longitude" in data and data["longitude"]:
+            try:
+                data["longitude"] = float(data["longitude"])
+            except ValueError:
+                pass
+
         logger.debug(f"Update data for market {market_id}: {data}")
 
-        if not data:
-            logger.warning("Empty request body for update")
-            return APIResponse.bad_request("Request body is required")
+        # Get images to delete (array of IDs)
+        delete_image_ids = []
+        if "delete_images" in request.form:
+            delete_ids_str = request.form.get("delete_images")
+            if delete_ids_str:
+                try:
+                    # Parse JSON array or comma-separated string
+                    if delete_ids_str.startswith("["):
+                        delete_image_ids = json.loads(delete_ids_str)
+                    else:
+                        delete_image_ids = [
+                            int(id.strip())
+                            for id in delete_ids_str.split(",")
+                            if id.strip()
+                        ]
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(f"Invalid delete_images format: {delete_ids_str}")
 
-        market = MarketService.update_market(market_id, data)
+        # Get new images to upload
+        files = request.files.getlist("images") if "images" in request.files else None
+
+        market = MarketService.update_market(market_id, data, files, delete_image_ids)
 
         if not market:
             logger.warning(f"Market not found for update with ID: {market_id}")
@@ -337,3 +393,18 @@ def find_nearby_markets():
     except Exception as e:
         logger.error(f"Error finding nearby markets: {str(e)}", exc_info=True)
         return APIResponse.internal_error("Failed to find nearby markets")
+
+
+@market_bp.route("/images/<filename>", methods=["GET"])
+def serve_market_image(filename):
+    """Serve market image files"""
+    try:
+        from flask import current_app
+
+        upload_folder = os.path.join(
+            current_app.root_path, "static", "uploads", "markets"
+        )
+        return send_from_directory(upload_folder, filename)
+    except Exception as e:
+        logger.error(f"Error serving image {filename}: {str(e)}")
+        return APIResponse.not_found("Image", filename)

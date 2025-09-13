@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Save, AlertTriangle, MapPin, Loader2 } from "lucide-react";
+import { Save, AlertTriangle, MapPin, Loader2, Camera } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -9,6 +9,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import LocationPicker from "@/components/LocationPicker";
+import ImageUpload from "@/components/ui/image-upload";
 
 const MarketModal = ({
     isOpen,
@@ -18,6 +19,7 @@ const MarketModal = ({
     formData,
     onInputChange,
     onLocationChange,
+    onImagesChange,
     onSubmit,
     onDelete,
     mutationLoading,
@@ -175,6 +177,62 @@ const MarketModal = ({
                                         {selectedMarket?.category || "Umum"}
                                     </span>
                                 </div>
+
+                                {/* Images section */}
+                                {selectedMarket?.images &&
+                                    selectedMarket.images.length > 0 && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <Camera className="inline h-4 w-4 mr-1" />
+                                                Gambar Pasar
+                                            </label>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                {selectedMarket.images.map(
+                                                    (image, index) => (
+                                                        <div
+                                                            key={
+                                                                image.id ||
+                                                                index
+                                                            }
+                                                            className="aspect-square rounded-lg overflow-hidden bg-gray-100 border"
+                                                        >
+                                                            <img
+                                                                src={`${
+                                                                    import.meta
+                                                                        .env
+                                                                        .VITE_BASE_API_URL ||
+                                                                    "http://localhost:8000"
+                                                                }/api/markets/images/${
+                                                                    image.filename
+                                                                }`}
+                                                                alt={
+                                                                    image.original_filename
+                                                                }
+                                                                className="w-full h-full object-cover"
+                                                                onError={(
+                                                                    e
+                                                                ) => {
+                                                                    e.target.style.display =
+                                                                        "none";
+                                                                    e.target.nextSibling.style.display =
+                                                                        "flex";
+                                                                }}
+                                                            />
+                                                            <div
+                                                                className="w-full h-full flex items-center justify-center bg-gray-100"
+                                                                style={{
+                                                                    display:
+                                                                        "none",
+                                                                }}
+                                                            >
+                                                                <Camera className="h-8 w-8 text-gray-400" />
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                             </div>
 
                             {/* Preview peta - Right side on desktop, bottom on mobile */}
@@ -334,6 +392,25 @@ const MarketModal = ({
                                         <option value="modern">Modern</option>
                                         <option value="umum">Umum</option>
                                     </select>
+                                </div>
+
+                                {/* Image upload section */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <Camera className="inline h-4 w-4 mr-1" />
+                                        Gambar Pasar
+                                    </label>
+                                    <ImageUpload
+                                        images={formData.images || []}
+                                        onImagesChange={onImagesChange}
+                                        maxImages={5}
+                                        disabled={mutationLoading}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Upload gambar pasar (opsional). Maksimal
+                                        5 gambar, ukuran maksimal 5MB per
+                                        gambar.
+                                    </p>
                                 </div>
 
                                 {/* Instruksi untuk klik peta */}

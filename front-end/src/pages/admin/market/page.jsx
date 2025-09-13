@@ -30,6 +30,8 @@ export default function MarketAdmin() {
         latitude: "",
         longitude: "",
         category: "",
+        images: [],
+        deleteImages: [], // For tracking images to delete during edit
     });
 
     // Debounce search to avoid too many API calls
@@ -70,6 +72,8 @@ export default function MarketAdmin() {
             latitude: "",
             longitude: "",
             category: "",
+            images: [],
+            deleteImages: [],
         });
         setIsOpen(true);
     };
@@ -89,6 +93,8 @@ export default function MarketAdmin() {
             latitude: market.latitude || "",
             longitude: market.longitude || "",
             category: market.category || "",
+            images: market.images || [],
+            deleteImages: [],
         });
         setIsOpen(true);
     };
@@ -133,6 +139,41 @@ export default function MarketAdmin() {
             latitude,
             longitude,
         }));
+    };
+
+    const handleImagesChange = (images) => {
+        setFormData((prev) => {
+            // Separate existing images from new files
+            const existingImages = [];
+            const newFiles = [];
+            const imagesToDelete = [];
+
+            images.forEach((image) => {
+                if (image instanceof File) {
+                    newFiles.push(image);
+                } else if (image.id) {
+                    existingImages.push(image);
+                }
+            });
+
+            // Find images that were deleted (existed before but not now)
+            const currentImageIds = existingImages.map((img) => img.id);
+            const previousImageIds = (prev.images || [])
+                .filter((img) => img.id)
+                .map((img) => img.id);
+
+            const deletedIds = previousImageIds.filter(
+                (id) => !currentImageIds.includes(id)
+            );
+
+            return {
+                ...prev,
+                images: [...existingImages, ...newFiles],
+                deleteImages: [...prev.deleteImages, ...deletedIds].filter(
+                    (id, index, arr) => arr.indexOf(id) === index
+                ), // Remove duplicates
+            };
+        });
     };
 
     const handleSubmit = async () => {
@@ -288,6 +329,7 @@ export default function MarketAdmin() {
                     formData={formData}
                     onInputChange={handleInputChange}
                     onLocationChange={handleLocationChange}
+                    onImagesChange={handleImagesChange}
                     onSubmit={handleSubmit}
                     onDelete={handleDelete}
                     mutationLoading={mutationLoading}

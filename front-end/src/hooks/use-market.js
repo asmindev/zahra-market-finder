@@ -14,9 +14,13 @@ const fetchAPI = async (endpoint, options = {}) => {
     try {
         const token = getAuthToken();
         const headers = {
-            "Content-Type": "application/json",
             ...options.headers,
         };
+
+        // Add Content-Type only if it's not multipart form data
+        if (!options.isMultipart) {
+            headers["Content-Type"] = "application/json";
+        }
 
         // Add authorization header if token exists
         if (token) {
@@ -197,9 +201,34 @@ export const useMarketMutations = () => {
             setLoading(true);
             setError(null);
 
+            // Create FormData for multipart form submission
+            const formData = new FormData();
+
+            // Add market data fields
+            Object.keys(marketData).forEach((key) => {
+                if (
+                    key !== "images" &&
+                    key !== "deleteImages" &&
+                    marketData[key] !== null &&
+                    marketData[key] !== undefined
+                ) {
+                    formData.append(key, marketData[key]);
+                }
+            });
+
+            // Add image files
+            if (marketData.images && Array.isArray(marketData.images)) {
+                marketData.images.forEach((image) => {
+                    if (image instanceof File) {
+                        formData.append("images", image);
+                    }
+                });
+            }
+
             const data = await fetchAPI("/api/markets/", {
                 method: "POST",
-                body: JSON.stringify(marketData),
+                body: formData,
+                isMultipart: true,
             });
 
             return data;
@@ -217,9 +246,46 @@ export const useMarketMutations = () => {
             setLoading(true);
             setError(null);
 
+            // Create FormData for multipart form submission
+            const formData = new FormData();
+
+            // Add market data fields
+            Object.keys(marketData).forEach((key) => {
+                if (
+                    key !== "images" &&
+                    key !== "deleteImages" &&
+                    marketData[key] !== null &&
+                    marketData[key] !== undefined
+                ) {
+                    formData.append(key, marketData[key]);
+                }
+            });
+
+            // Add image deletion IDs
+            if (
+                marketData.deleteImages &&
+                Array.isArray(marketData.deleteImages) &&
+                marketData.deleteImages.length > 0
+            ) {
+                formData.append(
+                    "delete_images",
+                    JSON.stringify(marketData.deleteImages)
+                );
+            }
+
+            // Add new image files
+            if (marketData.images && Array.isArray(marketData.images)) {
+                marketData.images.forEach((image) => {
+                    if (image instanceof File) {
+                        formData.append("images", image);
+                    }
+                });
+            }
+
             const data = await fetchAPI(`/api/markets/${id}`, {
                 method: "PUT",
-                body: JSON.stringify(marketData),
+                body: formData,
+                isMultipart: true,
             });
 
             return data;
