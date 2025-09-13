@@ -126,7 +126,7 @@ const MarketDetailCard = ({
 
                                                 {/* Main Image Carousel */}
                                                 <div className="relative mb-4">
-                                                    <div className="aspect-video rounded-lg overflow-hidden bg-gray-100 border">
+                                                    <div className="max-h-[400px] rounded-lg overflow-hidden bg-gray-100 border">
                                                         <img
                                                             src={getImageUrl(
                                                                 selectedMarket
