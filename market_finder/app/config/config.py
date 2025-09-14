@@ -12,7 +12,7 @@ class Config:
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or SECRET_KEY
     MYSQL_HOST = os.environ.get("MYSQL_HOST") or "localhost"
     MYSQL_USER = os.environ.get("MYSQL_USER") or "root"
-    MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD") or "root"
+    MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD") or ""
     MYSQL_DB = os.environ.get("MYSQL_DB") or "market_finder"
 
     SQLALCHEMY_DATABASE_URI = (
