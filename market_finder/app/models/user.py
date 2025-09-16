@@ -32,7 +32,7 @@ class User(db.Model):
     def generate_token(self, expires_delta=None):
         """Generate JWT token"""
         if expires_delta is None:
-            expires_delta = timedelta(seconds=5)
+            expires_delta = timedelta(hours=48)
 
         payload = {
             "user_id": self.id,
