@@ -25,6 +25,16 @@ const handleResponse = async (response) => {
     const data = await response.json();
 
     if (!response.ok) {
+        // If unauthorized, token might be invalid
+        if (response.status === 401) {
+            // Clear invalid token from localStorage
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+
+            // Dispatch a custom event to notify AuthContext
+            window.dispatchEvent(new CustomEvent("auth:logout"));
+        }
+
         throw new Error(data.error?.message || "API request failed");
     }
 

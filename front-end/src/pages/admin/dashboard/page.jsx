@@ -31,6 +31,7 @@ import {
     Tooltip,
     Legend,
 } from "recharts";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Dashboard() {
     const { user } = useAuth();

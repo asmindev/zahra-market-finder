@@ -26,7 +26,17 @@ const fetchDashboardAPI = async (endpoint) => {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            if (response.status === 401) {
+                // Clear invalid token from localStorage
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+
+                // Dispatch a custom event to notify AuthContext
+                window.dispatchEvent(new CustomEvent("auth:logout"));
+            }
+            throw new Error(
+                `API request failed with status ${response.status}`
+            );
         }
 
         const data = await response.json();
@@ -117,11 +127,6 @@ export const useDashboardStats = () => {
 
     useEffect(() => {
         fetchStats();
-
-        // Refresh data every 30 seconds for real-time updates
-        const interval = setInterval(fetchStats, 30000);
-
-        return () => clearInterval(interval);
     }, []);
 
     const refetch = () => {
