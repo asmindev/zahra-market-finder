@@ -108,6 +108,10 @@ const MarketDetailCard = ({
                                                 {selectedMarket.location}
                                             </span>
                                         </p>
+                                        {/* description */}
+                                        <p className="text-gray-600">
+                                            {selectedMarket.description}
+                                        </p>
                                     </div>
 
                                     {/* Images Carousel */}
@@ -328,6 +332,9 @@ const MarketDetailCard = ({
                                         <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
                                             {selectedMarket.location}
                                         </span>
+                                    </p>
+                                    <p className="text-gray-600">
+                                        {selectedMarket.description}
                                     </p>
                                 </div>
 
