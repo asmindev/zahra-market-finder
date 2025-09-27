@@ -24,8 +24,21 @@ class GAConfig:
     ELITE_SIZE: int = 3
 
 
+@dataclass
+class GAStats:
+    """Statistics for tracking GA convergence"""
+
+    generation: int
+    best_fitness: float
+    worst_fitness: float
+    avg_fitness: float
+    std_fitness: float
+    diversity: float
+    stagnation_count: int
+
+
 class MarketGA:
-    """Compact GA service to find nearest markets"""
+    """Compact GA service to find nearest markets with convergence tracking"""
 
     def __init__(self, target_lat: float, target_lng: float):
         self.target_lat = target_lat
@@ -34,6 +47,15 @@ class MarketGA:
         self.toolbox = None
         self._distance_cache = {}
         self.target_count = None  # Will be set when running GA
+
+        # Tracking variables
+        self.stats_history = []
+        self.best_fitness_history = []
+        self.avg_fitness_history = []
+        self.diversity_history = []
+        self.stagnation_count = 0
+        self.last_best_fitness = float("inf")
+
         self._setup_deap()
 
     def _setup_deap(self):
@@ -57,6 +79,87 @@ class MarketGA:
         self.toolbox.register(
             "select", tools.selTournament, tournsize=GAConfig.TOURNAMENT_SIZE
         )
+
+    def _calculate_diversity(self, population: List[List[int]]) -> float:
+        """Calculate population diversity using Hamming distance"""
+        if len(population) < 2:
+            return 0.0
+
+        total_distance = 0
+        comparisons = 0
+
+        for i in range(len(population)):
+            for j in range(i + 1, len(population)):
+                # Hamming distance between two individuals
+                hamming_dist = sum(a != b for a, b in zip(population[i], population[j]))
+                total_distance += hamming_dist
+                comparisons += 1
+
+        # Normalize by maximum possible distance and number of comparisons
+        max_distance = len(population[0])  # Maximum Hamming distance
+        avg_distance = total_distance / comparisons if comparisons > 0 else 0
+        return avg_distance / max_distance
+
+    def _collect_stats(self, population: List, generation: int) -> GAStats:
+        """Collect statistics for current generation"""
+        # Get fitness values
+        fitness_values = [
+            ind.fitness.values[0] for ind in population if ind.fitness.valid
+        ]
+
+        if not fitness_values:
+            return GAStats(
+                generation,
+                float("inf"),
+                float("inf"),
+                float("inf"),
+                0.0,
+                0.0,
+                self.stagnation_count,
+            )
+
+        best_fitness = min(fitness_values)
+        worst_fitness = max(fitness_values)
+        avg_fitness = np.mean(fitness_values)
+        std_fitness = np.std(fitness_values)
+
+        # Calculate diversity
+        diversity = self._calculate_diversity(population)
+
+        # Update stagnation count
+        if (
+            abs(best_fitness - self.last_best_fitness) < 0.001
+        ):  # Threshold for "no improvement"
+            self.stagnation_count += 1
+        else:
+            self.stagnation_count = 0
+            self.last_best_fitness = best_fitness
+
+        return GAStats(
+            generation=generation,
+            best_fitness=best_fitness,
+            worst_fitness=worst_fitness,
+            avg_fitness=avg_fitness,
+            std_fitness=std_fitness,
+            diversity=diversity,
+            stagnation_count=self.stagnation_count,
+        )
+
+    def _log_generation_stats(self, stats: GAStats):
+        """Log generation statistics"""
+        logger.info(f"Generation {stats.generation}:")
+        logger.info(f"  Best Fitness: {stats.best_fitness:.4f}")
+        logger.info(f"  Avg Fitness: {stats.avg_fitness:.4f}")
+        logger.info(f"  Worst Fitness: {stats.worst_fitness:.4f}")
+        logger.info(f"  Std Fitness: {stats.std_fitness:.4f}")
+        logger.info(f"  Diversity: {stats.diversity:.4f}")
+        logger.info(f"  Stagnation: {stats.stagnation_count} generations")
+
+        # Store for history
+        self.best_fitness_history.append(stats.best_fitness)
+        self.avg_fitness_history.append(stats.avg_fitness)
+        self.diversity_history.append(stats.diversity)
+        self.stats_history.append(stats)
 
     @lru_cache(maxsize=256)
     def _get_route_distance(
@@ -159,9 +262,17 @@ class MarketGA:
         return child1, child2
 
     def _run_ga(self, target_count: Optional[int] = None) -> List[int]:
-        """Run genetic algorithm to find optimal market selection"""
+        """Run genetic algorithm to find optimal market selection with detailed tracking"""
         if not self.markets:
             return []
+
+        # Reset tracking variables
+        self.stats_history = []
+        self.best_fitness_history = []
+        self.avg_fitness_history = []
+        self.diversity_history = []
+        self.stagnation_count = 0
+        self.last_best_fitness = float("inf")
 
         # Set target count for this run
         self.target_count = target_count
@@ -171,21 +282,238 @@ class MarketGA:
             "population", tools.initRepeat, list, self.toolbox.individual
         )
 
-        # Run GA
+        # Initialize population
         pop = self.toolbox.population(n=GAConfig.POPULATION_SIZE)
         hof = tools.HallOfFame(GAConfig.ELITE_SIZE)
 
-        algorithms.eaSimple(
-            pop,
-            self.toolbox,
-            cxpb=GAConfig.CROSSOVER_PROB,
-            mutpb=GAConfig.MUTATION_PROB,
-            ngen=GAConfig.GENERATIONS,
-            halloffame=hof,
-            verbose=False,
-        )
+        # Evaluate initial population
+        logger.info("=== STARTING GA WITH CONVERGENCE TRACKING ===")
+        logger.info(f"Population Size: {GAConfig.POPULATION_SIZE}")
+        logger.info(f"Max Generations: {GAConfig.GENERATIONS}")
+        logger.info(f"Target Markets: {target_count}")
+        logger.info("=" * 60)
+
+        # Custom evolution loop for better tracking
+        for gen in range(GAConfig.GENERATIONS):
+            # Evaluate population
+            fitnesses = list(map(self.toolbox.evaluate, pop))
+            for ind, fit in zip(pop, fitnesses):
+                ind.fitness.values = fit
+
+            # Collect and log statistics
+            stats = self._collect_stats(pop, gen)
+            self._log_generation_stats(stats)
+
+            # Update hall of fame
+            hof.update(pop)
+
+            # Check for early convergence
+            if self.stagnation_count >= 5:
+                logger.info(
+                    f"🔄 EARLY CONVERGENCE at generation {gen} (5 generations without improvement)"
+                )
+                break
+
+            # Selection
+            offspring = self.toolbox.select(pop, len(pop))
+            offspring = list(map(self.toolbox.clone, offspring))
+
+            # Apply crossover
+            for child1, child2 in zip(offspring[::2], offspring[1::2]):
+                if random.random() < GAConfig.CROSSOVER_PROB:
+                    self.toolbox.mate(child1, child2)
+                    del child1.fitness.values
+                    del child2.fitness.values
+
+            # Apply mutation
+            for mutant in offspring:
+                if random.random() < GAConfig.MUTATION_PROB:
+                    self.toolbox.mutate(mutant)
+                    del mutant.fitness.values
+
+            # Replace population
+            pop[:] = offspring
+
+        # Final summary
+        logger.info("=" * 60)
+        logger.info("🏁 GA COMPLETED!")
+
+        if self.stats_history:
+            initial_fitness = self.best_fitness_history[0]
+            final_fitness = self.best_fitness_history[-1]
+            improvement = (initial_fitness - final_fitness) / initial_fitness * 100
+
+            logger.info(f"📊 CONVERGENCE SUMMARY:")
+            logger.info(f"   • Total Generations: {len(self.stats_history)}")
+            logger.info(f"   • Initial Best Fitness: {initial_fitness:.4f}")
+            logger.info(f"   • Final Best Fitness: {final_fitness:.4f}")
+            logger.info(f"   • Improvement: {improvement:.2f}%")
+            logger.info(f"   • Final Diversity: {self.diversity_history[-1]:.4f}")
+            logger.info(f"   • Final Stagnation: {self.stagnation_count} generations")
+
+            # Detect convergence point
+            convergence_gen = None
+            for i in range(1, len(self.best_fitness_history)):
+                if (
+                    abs(self.best_fitness_history[i] - self.best_fitness_history[i - 1])
+                    < 0.001
+                ):
+                    if i >= 2:
+                        stable_count = 1
+                        for j in range(
+                            i + 1, min(i + 3, len(self.best_fitness_history))
+                        ):
+                            if (
+                                abs(
+                                    self.best_fitness_history[j]
+                                    - self.best_fitness_history[i]
+                                )
+                                < 0.001
+                            ):
+                                stable_count += 1
+                        if stable_count >= 2:
+                            convergence_gen = i
+                            break
+
+            if convergence_gen:
+                logger.info(f"   • Converged at Generation: {convergence_gen}")
+                logger.info(f"   • Status: ✅ CONVERGED")
+            else:
+                logger.info(f"   • Status: ⚠️  NOT FULLY CONVERGED")
+
+            # Show fitness evolution
+            logger.info("📈 FITNESS EVOLUTION:")
+            for i, fitness in enumerate(self.best_fitness_history):
+                diversity = self.diversity_history[i]
+                status = ""
+                if i > 0:
+                    change = fitness - self.best_fitness_history[i - 1]
+                    if abs(change) < 0.001:
+                        status = "🔄"
+                    elif change < 0:
+                        status = "⬇️"
+                    else:
+                        status = "⬆️"
+
+                logger.info(
+                    f"   Gen {i:2d}: Fitness={fitness:.4f}, Diversity={diversity:.3f} {status}"
+                )
+
+        logger.info("=" * 60)
 
         return hof[0] if hof else []
+
+    def plot_convergence(self, save_path: Optional[str] = None):
+        """Plot convergence graphs"""
+        if not self.stats_history:
+            logger.warning("No statistics to plot. Run GA first.")
+            return
+
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+
+        generations = list(range(len(self.stats_history)))
+
+        # Plot 1: Fitness Evolution
+        ax1.plot(
+            generations,
+            self.best_fitness_history,
+            "b-",
+            label="Best Fitness",
+            linewidth=2,
+        )
+        ax1.plot(
+            generations,
+            self.avg_fitness_history,
+            "r--",
+            label="Average Fitness",
+            linewidth=2,
+        )
+        ax1.set_xlabel("Generation")
+        ax1.set_ylabel("Fitness (Distance + Penalty)")
+        ax1.set_title("Fitness Evolution")
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Plot 2: Diversity Evolution
+        ax2.plot(generations, self.diversity_history, "g-", linewidth=2)
+        ax2.set_xlabel("Generation")
+        ax2.set_ylabel("Population Diversity")
+        ax2.set_title("Population Diversity Over Time")
+        ax2.grid(True, alpha=0.3)
+
+        # Plot 3: Fitness Standard Deviation
+        std_history = [stats.std_fitness for stats in self.stats_history]
+        ax3.plot(generations, std_history, "m-", linewidth=2)
+        ax3.set_xlabel("Generation")
+        ax3.set_ylabel("Fitness Standard Deviation")
+        ax3.set_title("Fitness Variability")
+        ax3.grid(True, alpha=0.3)
+
+        # Plot 4: Stagnation Count
+        stagnation_history = [stats.stagnation_count for stats in self.stats_history]
+        ax4.plot(generations, stagnation_history, "c-", linewidth=2)
+        ax4.set_xlabel("Generation")
+        ax4.set_ylabel("Stagnation Count")
+        ax4.set_title("Convergence Stagnation")
+        ax4.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            logger.info(f"Convergence plot saved to {save_path}")
+
+        plt.show()
+
+    def get_convergence_summary(self) -> Dict[str, Any]:
+        """Get summary of convergence statistics"""
+        if not self.stats_history:
+            return {"error": "No statistics available. Run GA first."}
+
+        final_stats = self.stats_history[-1]
+
+        # Calculate improvement rate
+        if len(self.best_fitness_history) > 1:
+            initial_fitness = self.best_fitness_history[0]
+            final_fitness = self.best_fitness_history[-1]
+            improvement_rate = (initial_fitness - final_fitness) / initial_fitness * 100
+        else:
+            improvement_rate = 0
+
+        # Detect convergence point
+        convergence_gen = None
+        for i in range(1, len(self.best_fitness_history)):
+            if (
+                abs(self.best_fitness_history[i] - self.best_fitness_history[i - 1])
+                < 0.001
+            ):
+                if i >= 3:  # Need at least 3 consecutive stable generations
+                    stable_count = 1
+                    for j in range(i + 1, min(i + 4, len(self.best_fitness_history))):
+                        if (
+                            abs(
+                                self.best_fitness_history[j]
+                                - self.best_fitness_history[i]
+                            )
+                            < 0.001
+                        ):
+                            stable_count += 1
+                    if stable_count >= 3:
+                        convergence_gen = i
+                        break
+
+        return {
+            "total_generations": len(self.stats_history),
+            "initial_best_fitness": self.best_fitness_history[0],
+            "final_best_fitness": final_stats.best_fitness,
+            "improvement_rate_percent": round(improvement_rate, 2),
+            "final_diversity": round(final_stats.diversity, 4),
+            "final_stagnation_count": final_stats.stagnation_count,
+            "convergence_generation": convergence_gen,
+            "converged": convergence_gen is not None,
+            "average_fitness_final": round(final_stats.avg_fitness, 4),
+            "fitness_std_final": round(final_stats.std_fitness, 4),
+        }
 
     def find_nearest_markets(self, limit: int = 5) -> List[Dict[str, Any]]:
         """Find n nearest markets using GA + Haversine + OSRM ranking"""
@@ -278,3 +606,25 @@ def find_nearby_markets(
     """Convenience function to find nearby markets"""
     ga = MarketGA(target_lat, target_lng)
     return ga.find_nearest_markets(limit)
+
+
+# Example usage function
+def analyze_ga_convergence(target_lat: float, target_lng: float, limit: int = 5):
+    """Complete example of running GA with convergence analysis"""
+
+    # Initialize GA
+    ga = MarketGA(target_lat, target_lng)
+
+    # Find nearest markets (this will run GA and collect statistics)
+    results = ga.find_nearest_markets(limit)
+
+    # Get convergence summary
+    summary = ga.get_convergence_summary()
+    print("\n=== CONVERGENCE SUMMARY ===")
+    for key, value in summary.items():
+        print(f"{key}: {value}")
+
+    # Plot convergence graphs
+    ga.plot_convergence("ga_convergence_plot.png")
+
+    return results, summary
