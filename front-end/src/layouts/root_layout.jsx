@@ -23,21 +23,7 @@ export default function RootLayout() {
     const location = useLocation();
 
     // Initialize visitor tracking
-    const { isInitialized, trackPageView } = useVisitorTracking();
-
-    // Track page views when location changes
-    useEffect(() => {
-        if (isInitialized) {
-            trackPageView(location.pathname + location.search, document.title);
-        }
-    }, [location, isInitialized, trackPageView]);
-
-    const navigationItems = [
-        { to: "/", label: "Beranda" },
-        { to: "/market", label: "Pasar" },
-        { to: "/about", label: "Tentang" },
-        { to: "/contact", label: "Kontak" },
-    ];
+    // const { isInitialized, trackPageView } = useVisitorTracking();
 
     // Search functionality
     const handleSearch = (searchTerm) => {
