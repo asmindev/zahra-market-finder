@@ -8,6 +8,11 @@ from app.models.market import Market
 from app.logging import get_logger
 import requests
 
+# matplotlib
+import matplotlib.pyplot as plt
+
+# use terminal backend for matplotlib
+plt.switch_backend("Agg")
 logger = get_logger(__name__)
 
 
@@ -327,7 +332,7 @@ class MarketGA:
             # Check for early convergence
             if self.stagnation_count >= 10:
                 logger.info(
-                    f"🔄 EARLY CONVERGENCE at generation {gen} (5 generations without improvement)"
+                    f"EARLY CONVERGENCE at generation {gen} (5 generations without improvement)"
                 )
                 break
 
@@ -353,14 +358,14 @@ class MarketGA:
 
         # Final summary
         logger.info("=" * 60)
-        logger.info("🏁 GA COMPLETED!")
+        logger.info("GA COMPLETED!")
 
         if self.stats_history:
             initial_fitness = self.best_fitness_history[0]
             final_fitness = self.best_fitness_history[-1]
             improvement = (initial_fitness - final_fitness) / initial_fitness * 100
 
-            logger.info(f"📊 CONVERGENCE SUMMARY:")
+            logger.info(f"CONVERGENCE SUMMARY:")
             logger.info(f"   • Total Generations: {len(self.stats_history)}")
             logger.info(f"   • Initial Best Fitness: {initial_fitness:.4f}")
             logger.info(f"   • Final Best Fitness: {final_fitness:.4f}")
@@ -394,12 +399,12 @@ class MarketGA:
 
             if convergence_gen:
                 logger.info(f"   • Converged at Generation: {convergence_gen}")
-                logger.info(f"   • Status: ✅ CONVERGED")
+                logger.info(f"   • Status: CONVERGED")
             else:
-                logger.info(f"   • Status: ⚠️  NOT FULLY CONVERGED")
+                logger.info(f"   • Status: NOT FULLY CONVERGED")
 
             # Show fitness evolution
-            logger.info("📈 FITNESS EVOLUTION:")
+            logger.info("FITNESS EVOLUTION:")
             for i, fitness in enumerate(self.best_fitness_history):
                 diversity = self.diversity_history[i]
                 status = ""
@@ -415,6 +420,46 @@ class MarketGA:
                 logger.info(
                     f"   Gen {i:2d}: Fitness={fitness:.4f}, Diversity={diversity:.3f}"
                 )
+
+            # Plot fitness and diversity over generations
+            plt.figure(figsize=(10, 6))
+            plt.plot(
+                range(len(self.best_fitness_history)),
+                self.best_fitness_history,
+                label="Best Fitness",
+                color="blue",
+            )
+            plt.plot(
+                range(len(self.avg_fitness_history)),
+                self.avg_fitness_history,
+                label="Avg Fitness",
+                color="orange",
+            )
+            plt.xlabel("Generation")
+            plt.ylabel("Fitness")
+            plt.title("GA Fitness Over Generations")
+            plt.legend()
+            plt.grid(True)
+            plt.twinx()
+            plt.plot(
+                range(len(self.diversity_history)),
+                self.diversity_history,
+                label="Diversity",
+                color="green",
+                linestyle="--",
+            )
+            plt.ylabel("Diversity")
+            plt.legend(loc="upper right")
+            # save to file
+            # create folder if not exists
+            import os
+            from pathlib import Path
+
+            static_dir = Path("static")
+            resultdit = static_dir / "results"
+            resultdit.mkdir(parents=True, exist_ok=True)
+            plt.savefig(resultdit / "ga_fitness_diversity.png")
+            plt.close()
 
         logger.info("=" * 60)
 
@@ -512,8 +557,7 @@ class MarketGA:
             logger.info("Using selected markets from GA")
             selected_indices = [i for i, v in enumerate(best_individual) if v == 1]
             selected_markets = [self.markets[i] for i in selected_indices]
-            for market in selected_markets:
-                logger.info(f"  - Market {market.id}: {market.name}")
+
         else:
             # Fallback: use closest markets by Haversine
             logger.info(
