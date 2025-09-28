@@ -7,7 +7,6 @@ from deap import base, creator, tools, algorithms
 from app.models.market import Market
 from app.logging import get_logger
 import requests
-from functools import lru_cache
 
 logger = get_logger(__name__)
 
@@ -16,10 +15,10 @@ logger = get_logger(__name__)
 class GAConfig:
     """Simplified GA configuration"""
 
-    POPULATION_SIZE: int = 30
-    GENERATIONS: int = 20
+    POPULATION_SIZE: int = 100
+    GENERATIONS: int = 100
     CROSSOVER_PROB: float = 0.7
-    MUTATION_PROB: float = 0.2
+    MUTATION_PROB: float = 0.3
     TOURNAMENT_SIZE: int = 3
     ELITE_SIZE: int = 3
 
@@ -161,7 +160,7 @@ class MarketGA:
         self.diversity_history.append(stats.diversity)
         self.stats_history.append(stats)
 
-    @lru_cache(maxsize=256)
+    # @lru_cache(maxsize=256)
     def _get_route_distance(
         self, start: Tuple[float, float], end: Tuple[float, float]
     ) -> Optional[float]:
@@ -225,6 +224,10 @@ class MarketGA:
             distance = self._haversine_distance(
                 self.target_lat, self.target_lng, market.latitude, market.longitude
             )
+            if distance is None:  # Fallback to Haversine
+                distance = self._haversine_distance(
+                    self.target_lat, self.target_lng, market.latitude, market.longitude
+                )
             distances.append(distance)
 
         avg_distance = sum(distances) / len(distances)
@@ -233,19 +236,33 @@ class MarketGA:
         count_penalty = 0
         if self.target_count:
             count_diff = abs(len(selected_indices) - self.target_count)
-            count_penalty = count_diff * 10.0  # Heavy penalty for wrong count
+            count_penalty = count_diff * 100.0  # Heavy penalty for wrong count
 
         return (avg_distance + count_penalty,)
 
     def _mutate_individual(self, individual: List[int]) -> Tuple[List[int]]:
-        """Mutate individual by flipping some bits"""
-        for i in range(len(individual)):
-            if random.random() < 0.1:
-                individual[i] = 1 - individual[i]
+        """Mutate individual by flipping bits while maintaining target count"""
+        current_count = sum(individual)
+        for _ in range(random.randint(1, 3)):  # Perform 1-3 bit flips
+            # Choose a 1 to flip to 0
+            ones = [i for i, val in enumerate(individual) if val == 1]
+            zeros = [i for i, val in enumerate(individual) if val == 0]
+            if ones and zeros:
+                flip_off = random.choice(ones)
+                flip_on = random.choice(zeros)
+                individual[flip_off] = 0
+                individual[flip_on] = 1
 
-        # Ensure at least 1 market is selected
-        if sum(individual) == 0:
-            individual[random.randint(0, len(individual) - 1)] = 1
+        # Ensure exactly target_count markets are selected
+        if self.target_count:
+            while sum(individual) > self.target_count:
+                ones = [i for i, val in enumerate(individual) if val == 1]
+                if ones:
+                    individual[random.choice(ones)] = 0
+            while sum(individual) < self.target_count:
+                zeros = [i for i, val in enumerate(individual) if val == 0]
+                if zeros:
+                    individual[random.choice(zeros)] = 1
 
         return (individual,)
 
@@ -308,7 +325,7 @@ class MarketGA:
             hof.update(pop)
 
             # Check for early convergence
-            if self.stagnation_count >= 5:
+            if self.stagnation_count >= 10:
                 logger.info(
                     f"🔄 EARLY CONVERGENCE at generation {gen} (5 generations without improvement)"
                 )
@@ -403,68 +420,6 @@ class MarketGA:
 
         return hof[0] if hof else []
 
-    def plot_convergence(self, save_path: Optional[str] = None):
-        """Plot convergence graphs"""
-        if not self.stats_history:
-            logger.warning("No statistics to plot. Run GA first.")
-            return
-
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
-
-        generations = list(range(len(self.stats_history)))
-
-        # Plot 1: Fitness Evolution
-        ax1.plot(
-            generations,
-            self.best_fitness_history,
-            "b-",
-            label="Best Fitness",
-            linewidth=2,
-        )
-        ax1.plot(
-            generations,
-            self.avg_fitness_history,
-            "r--",
-            label="Average Fitness",
-            linewidth=2,
-        )
-        ax1.set_xlabel("Generation")
-        ax1.set_ylabel("Fitness (Distance + Penalty)")
-        ax1.set_title("Fitness Evolution")
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-
-        # Plot 2: Diversity Evolution
-        ax2.plot(generations, self.diversity_history, "g-", linewidth=2)
-        ax2.set_xlabel("Generation")
-        ax2.set_ylabel("Population Diversity")
-        ax2.set_title("Population Diversity Over Time")
-        ax2.grid(True, alpha=0.3)
-
-        # Plot 3: Fitness Standard Deviation
-        std_history = [stats.std_fitness for stats in self.stats_history]
-        ax3.plot(generations, std_history, "m-", linewidth=2)
-        ax3.set_xlabel("Generation")
-        ax3.set_ylabel("Fitness Standard Deviation")
-        ax3.set_title("Fitness Variability")
-        ax3.grid(True, alpha=0.3)
-
-        # Plot 4: Stagnation Count
-        stagnation_history = [stats.stagnation_count for stats in self.stats_history]
-        ax4.plot(generations, stagnation_history, "c-", linewidth=2)
-        ax4.set_xlabel("Generation")
-        ax4.set_ylabel("Stagnation Count")
-        ax4.set_title("Convergence Stagnation")
-        ax4.grid(True, alpha=0.3)
-
-        plt.tight_layout()
-
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches="tight")
-            logger.info(f"Convergence plot saved to {save_path}")
-
-        plt.show()
-
     def get_convergence_summary(self) -> Dict[str, Any]:
         """Get summary of convergence statistics"""
         if not self.stats_history:
@@ -533,6 +488,8 @@ class MarketGA:
             return []
 
         logger.info(f"Found {len(self.markets)} active markets")
+        # for market in self.markets:
+        #     logger.info(f"  - Market {market.id}: {market.name}")
 
         # If markets <= limit, return all markets sorted by OSRM distance
         if len(self.markets) <= limit:
@@ -552,10 +509,16 @@ class MarketGA:
 
         # Step 2: Get selected markets from GA result
         if best_individual:
+            logger.info("Using selected markets from GA")
             selected_indices = [i for i, v in enumerate(best_individual) if v == 1]
             selected_markets = [self.markets[i] for i in selected_indices]
+            for market in selected_markets:
+                logger.info(f"  - Market {market.id}: {market.name}")
         else:
             # Fallback: use closest markets by Haversine
+            logger.info(
+                f"No selected markets from GA, using closest {limit} markets by Haversine"
+            )
             market_distances = []
             for market in self.markets:
                 distance = self._haversine_distance(
@@ -571,6 +534,8 @@ class MarketGA:
     def _rank_with_osrm(self, markets: List, limit: int) -> List[Dict[str, Any]]:
         """Rank markets using OSRM route distance"""
         logger.info(f"Ranking {len(markets)} markets using OSRM")
+        for market in markets:
+            logger.info(f"  - Market {market.id}: {market.name}")
 
         results = []
         for market in markets:
@@ -597,7 +562,7 @@ class MarketGA:
 
         # Sort by distance and return top n
         results.sort(key=lambda x: x["distance"])
-        return results[:limit]
+        return results
 
 
 def find_nearby_markets(
@@ -606,25 +571,3 @@ def find_nearby_markets(
     """Convenience function to find nearby markets"""
     ga = MarketGA(target_lat, target_lng)
     return ga.find_nearest_markets(limit)
-
-
-# Example usage function
-def analyze_ga_convergence(target_lat: float, target_lng: float, limit: int = 5):
-    """Complete example of running GA with convergence analysis"""
-
-    # Initialize GA
-    ga = MarketGA(target_lat, target_lng)
-
-    # Find nearest markets (this will run GA and collect statistics)
-    results = ga.find_nearest_markets(limit)
-
-    # Get convergence summary
-    summary = ga.get_convergence_summary()
-    print("\n=== CONVERGENCE SUMMARY ===")
-    for key, value in summary.items():
-        print(f"{key}: {value}")
-
-    # Plot convergence graphs
-    ga.plot_convergence("ga_convergence_plot.png")
-
-    return results, summary

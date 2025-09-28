@@ -306,7 +306,7 @@ def search_markets():
 
 
 @market_bp.route("/nearby", methods=["POST"])
-def find_nearby_markets():
+def find_nearby_marketss():
     """Find nearby markets using Genetic Algorithm"""
     logger.info("POST /api/markets/nearby - Finding nearby markets using GA")
 
