@@ -413,7 +413,7 @@ class MarketGA:
                         status = "⬆️"
 
                 logger.info(
-                    f"   Gen {i:2d}: Fitness={fitness:.4f}, Diversity={diversity:.3f} {status}"
+                    f"   Gen {i:2d}: Fitness={fitness:.4f}, Diversity={diversity:.3f}"
                 )
 
         logger.info("=" * 60)
