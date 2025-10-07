@@ -109,9 +109,11 @@ const MarketDetailCard = ({
                                             </span>
                                         </p>
                                         {/* description */}
-                                        <p className="text-gray-600">
-                                            {selectedMarket.description}
-                                        </p>
+                                        <div className="p-4 bg-gray-400 rounded">
+                                            <p className="text-gray-50 text-justify">
+                                                {selectedMarket.description}
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Images Carousel */}
@@ -333,9 +335,11 @@ const MarketDetailCard = ({
                                             {selectedMarket.location}
                                         </span>
                                     </p>
-                                    <p className="text-gray-600">
-                                        {selectedMarket.description}
-                                    </p>
+                                    <div className="p-4 bg-gray-400">
+                                        <p className="text-gray-50 text-justify">
+                                            {selectedMarket.description}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {/* Images Carousel - Mobile */}
