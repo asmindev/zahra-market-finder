@@ -6,17 +6,17 @@ export const DEFAULT_LONGITUDE =
 export const DEFAULT_ZOOM = parseInt(import.meta.env.VITE_DEFAULT_ZOOM) || 12;
 export const MAX_ROUTE = parseInt(import.meta.env.VITE_MAX_ROUTE) || 5;
 
-// Polyline colors for nearby markets (closest to furthest)
+// Polyline colors for nearby markets - Semua warna sama (biru tua)
 export const POLYLINE_COLORS = [
-    "#1D4ED8", // Biru tua untuk terdekat
-    "#3B82F6", // Biru medium untuk kedua
-    "#60A5FA", // Biru muda untuk ketiga
-    "#93C5FD", // Biru sangat muda untuk keempat
-    "#BFDBFE", // Biru pucat untuk kelima dan seterusnya
+    "#1D4ED8", // Biru tua untuk semua
+    "#1D4ED8", // Biru tua untuk semua
+    "#1D4ED8", // Biru tua untuk semua
+    "#1D4ED8", // Biru tua untuk semua
+    "#1D4ED8", // Biru tua untuk semua
 ];
 
-// Polyline opacities for nearby markets
-export const POLYLINE_OPACITIES = [0.8, 0.7, 0.6, 0.5, 0.4];
+// Polyline opacities for nearby markets - Semua terang penuh
+export const POLYLINE_OPACITIES = [1.0, 1.0, 1.0, 1.0, 1.0];
 
-// Polyline weights for nearby markets
-export const POLYLINE_WEIGHTS = [4, 3, 3, 2, 2];
+// Polyline weights for nearby markets - Semua sama tebal
+export const POLYLINE_WEIGHTS = [4, 4, 4, 4, 4];

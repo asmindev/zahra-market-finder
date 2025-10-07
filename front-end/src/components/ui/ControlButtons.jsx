@@ -1,4 +1,4 @@
-import { Navigation, Target, Plus, Minus } from "lucide-react";
+import { Navigation, Target, Plus, Minus, MapPin } from "lucide-react";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "motion/react";
 
@@ -10,7 +10,14 @@ const ControlButtons = ({
     onFindNearby,
     onZoomIn,
     onZoomOut,
+    onOpenLocationPicker,
+    useManualLocation = false,
+    isPickingLocation = false,
+    manualLocation = null,
 }) => {
+    // Cek apakah ada lokasi yang tersedia (GPS atau manual)
+    const hasLocation = userLocation || (useManualLocation && manualLocation);
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -30,7 +37,7 @@ const ControlButtons = ({
                     className={`flex items-center justify-center w-12 h-12 text-gray-600 hover:text-blue-600 transition-colors border-b border-gray-200 sm:w-10 sm:h-10 ${
                         isGettingLocation ? "animate-pulse" : ""
                     }`}
-                    title="Dapatkan Lokasi Saya"
+                    title="Dapatkan Lokasi GPS"
                     disabled={isGettingLocation}
                 >
                     {isGettingLocation ? (
@@ -38,6 +45,29 @@ const ControlButtons = ({
                     ) : (
                         <Navigation className="w-6 h-6 sm:w-5 sm:h-5" />
                     )}
+                </motion.button>
+
+                {/* Manual Location Picker Button */}
+                <motion.button
+                    onClick={onOpenLocationPicker}
+                    whileHover={{
+                        backgroundColor: "rgb(139 92 246 / 0.1)",
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex items-center justify-center w-12 h-12 transition-colors border-b border-gray-200 sm:w-10 sm:h-10 ${
+                        isPickingLocation
+                            ? "text-white bg-violet-600 animate-pulse"
+                            : useManualLocation
+                            ? "text-violet-600 bg-violet-50"
+                            : "text-gray-600 hover:text-violet-600"
+                    }`}
+                    title={
+                        isPickingLocation
+                            ? "Mode Pilih Lokasi Aktif - Klik di Peta"
+                            : "Pilih Lokasi Manual di Peta"
+                    }
+                >
+                    <MapPin className="w-6 h-6 sm:w-5 sm:h-5" />
                 </motion.button>
 
                 {/* Find Nearby Markets Button */}
@@ -49,9 +79,9 @@ const ControlButtons = ({
                     whileTap={{ scale: 0.95 }}
                     className={`flex items-center justify-center w-12 h-12 text-gray-600 hover:text-emerald-600 transition-colors sm:w-10 sm:h-10 ${
                         nearbyLoading ? "animate-pulse" : ""
-                    } ${!userLocation ? "opacity-50" : ""}`}
+                    } ${!hasLocation ? "opacity-50" : ""}`}
                     title="Cari Pasar Terdekat (AI)"
-                    disabled={nearbyLoading || !userLocation}
+                    disabled={nearbyLoading || !hasLocation}
                 >
                     {nearbyLoading ? (
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 sm:h-5 sm:w-5"></div>

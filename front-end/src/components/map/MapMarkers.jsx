@@ -3,6 +3,7 @@ import {
     createMarketIcon,
     createUserLocationIcon,
     createNearbyMarketIcon,
+    createManualLocationIcon,
 } from "@/utils/icons";
 
 const MapMarkers = ({
@@ -10,10 +11,13 @@ const MapMarkers = ({
     nearbyMarkets,
     showNearbyMarkets,
     userLocation,
+    manualLocation,
+    useManualLocation,
     onMarkerClick,
 }) => {
     const marketIcon = createMarketIcon();
     const userLocationIcon = createUserLocationIcon();
+    const manualLocationIcon = createManualLocationIcon();
 
     return (
         <>
@@ -55,10 +59,18 @@ const MapMarkers = ({
                   })}
 
             {/* Render user location marker */}
-            {userLocation && (
+            {userLocation && !useManualLocation && (
                 <Marker
                     position={[userLocation.lat, userLocation.lng]}
                     icon={userLocationIcon}
+                />
+            )}
+
+            {/* Render manual location marker */}
+            {manualLocation && useManualLocation && (
+                <Marker
+                    position={[manualLocation.lat, manualLocation.lng]}
+                    icon={manualLocationIcon}
                 />
             )}
         </>

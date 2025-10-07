@@ -73,6 +73,9 @@ export default function Home() {
         routeData,
         isLoadingRoute,
         isTrackingLocation,
+        manualLocation,
+        useManualLocation,
+        isPickingLocation,
         handleMarkerClick,
         closeMarketCard,
         toggleMarketList,
@@ -84,6 +87,9 @@ export default function Home() {
         handleNavigateToOSM,
         clearRoute,
         stopLocationTracking,
+        handleResetToGPSLocation,
+        handleMapClick,
+        handleTogglePickingMode,
     } = useMapHandlers({
         mapRef,
         navigate,
@@ -109,6 +115,10 @@ export default function Home() {
                 console.log("Map loaded, setting instance:", mapInstance);
                 setMap(mapInstance);
                 mapRef.current = mapInstance;
+            },
+            click: (e) => {
+                // Handler untuk klik pada peta
+                handleMapClick(e);
             },
         });
         return null;
@@ -250,13 +260,24 @@ export default function Home() {
                         margin: 0 !important;
                         padding: 0 !important;
                     }
+
+                    /* Picking location mode - change cursor */
+                    .leaflet-container.picking-location {
+                        cursor: crosshair !important;
+                    }
+
+                    .leaflet-container.picking-location * {
+                        cursor: crosshair !important;
+                    }
                 `}</style>
 
                     <MapContainer
                         center={[DEFAULT_LATITUDE, DEFAULT_LONGITUDE]}
                         zoom={DEFAULT_ZOOM}
                         style={{ height: "100%", width: "100%" }}
-                        className="z-0"
+                        className={`z-0 ${
+                            isPickingLocation ? "picking-location" : ""
+                        }`}
                         zoomControl={false}
                         ref={(mapInstance) => {
                             if (mapInstance) {
@@ -287,6 +308,8 @@ export default function Home() {
                             nearbyMarkets={nearbyMarkets}
                             showNearbyMarkets={showNearbyMarkets}
                             userLocation={userLocation}
+                            manualLocation={manualLocation}
+                            useManualLocation={useManualLocation}
                             onMarkerClick={handleMarkerClick}
                         />
 
@@ -295,6 +318,8 @@ export default function Home() {
                             nearbyMarkets={nearbyMarkets}
                             showNearbyMarkets={showNearbyMarkets}
                             userLocation={userLocation}
+                            manualLocation={manualLocation}
+                            useManualLocation={useManualLocation}
                         />
 
                         {/* Route Polyline */}
@@ -336,9 +361,13 @@ export default function Home() {
                         onFindNearby={handleFindNearbyMarkets}
                         onZoomIn={handleZoomIn}
                         onZoomOut={handleZoomOut}
+                        onOpenLocationPicker={handleTogglePickingMode}
                         isGettingLocation={isGettingLocation}
                         nearbyLoading={nearbyLoading}
                         userLocation={userLocation}
+                        manualLocation={manualLocation}
+                        useManualLocation={useManualLocation}
+                        isPickingLocation={isPickingLocation}
                     />
 
                     {/* Market List Overlay */}
@@ -368,6 +397,42 @@ export default function Home() {
                                 />
                             )}
                     </AnimatePresence>
+
+                    {/* Manual Location Info Badge */}
+                    {useManualLocation && manualLocation && (
+                        <div className="absolute top-20 left-4 right-4 sm:left-4 sm:right-auto z-[1000] bg-violet-600 text-white px-3 py-2 sm:px-4 rounded-lg shadow-lg flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></div>
+                                <span className="text-xs sm:text-sm font-medium">
+                                    Lokasi Manual Aktif
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleResetToGPSLocation}
+                                className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors whitespace-nowrap"
+                            >
+                                Reset ke GPS
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Picking Location Mode Indicator */}
+                    {isPickingLocation && (
+                        <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:right-auto sm:transform sm:-translate-x-1/2 z-[1000] bg-violet-600 text-white px-3 py-2 sm:px-6 sm:py-3 rounded-lg shadow-2xl flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-3 h-3 bg-white rounded-full after:size-3 after:bg-white after:rounded-full after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:animate-ping after:z-[-1] flex-shrink-0"></div>
+                                <span className="text-xs sm:text-sm font-bold">
+                                    🎯 Klik di Peta untuk Memilih Lokasi Asal
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleTogglePickingMode}
+                                className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded transition-colors font-medium whitespace-nowrap ml-auto sm:ml-2"
+                            >
+                                Batal
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 

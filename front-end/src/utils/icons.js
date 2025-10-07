@@ -132,3 +132,37 @@ export const createNearbyMarketIcon = (index) => {
         popupAnchor: [0, isClosest ? -50 : -45],
     });
 };
+
+// Custom manual location icon
+export const createManualLocationIcon = () => {
+    const svgIcon = `
+        <svg width="35" height="45" viewBox="0 0 35 45" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="manualGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#6D28D9;stop-opacity:1" />
+                </linearGradient>
+                <filter id="manualShadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
+                </filter>
+            </defs>
+            <path d="M17.5 5 C11 5 5 11 5 17.5 C5 24 17.5 40 17.5 40 C17.5 40 30 24 30 17.5 C30 11 24 5 17.5 5 Z"
+                  fill="url(#manualGradient)"
+                  filter="url(#manualShadow)"
+                  stroke="white"
+                  stroke-width="2"/>
+            <circle cx="17.5" cy="17.5" r="8" fill="white" opacity="0.95"/>
+            <circle cx="17.5" cy="17.5" r="5" fill="#8B5CF6"/>
+            <!-- Pin icon -->
+            <path d="M17.5 13 L17.5 18 M15 15.5 L20 15.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    `;
+
+    return new L.divIcon({
+        html: svgIcon,
+        className: "custom-manual-location-icon",
+        iconSize: [35, 45],
+        iconAnchor: [17.5, 45],
+        popupAnchor: [0, -45],
+    });
+};

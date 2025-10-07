@@ -22,6 +22,10 @@ const useMapHandlers = ({
     const [isLoadingRoute, setIsLoadingRoute] = useState(false);
     const [isTrackingLocation, setIsTrackingLocation] = useState(false);
     const [watchId, setWatchId] = useState(null);
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
+    const [manualLocation, setManualLocation] = useState(null);
+    const [useManualLocation, setUseManualLocation] = useState(false);
+    const [isPickingLocation, setIsPickingLocation] = useState(false);
 
     // Handler untuk klik marker dengan haptic feedback
     const handleMarkerClick = (market) => {
@@ -47,10 +51,14 @@ const useMapHandlers = ({
 
     // Handler untuk mencari pasar terdekat
     const handleFindNearbyMarkets = async () => {
-        if (!userLocation) {
+        // Gunakan manual location jika tersedia, jika tidak gunakan user location
+        const originLocation =
+            useManualLocation && manualLocation ? manualLocation : userLocation;
+
+        if (!originLocation) {
             triggerHapticFeedback();
             toast(
-                "Lokasi Anda belum diketahui. Silakan klik tombol lokasi terlebih dahulu."
+                "Lokasi asal belum ditentukan. Silakan pilih lokasi GPS atau pilih manual di peta."
             );
             return;
         }
@@ -59,8 +67,8 @@ const useMapHandlers = ({
         try {
             await findNearbyMarkets(
                 {
-                    latitude: userLocation.lat,
-                    longitude: userLocation.lng,
+                    latitude: originLocation.lat,
+                    longitude: originLocation.lng,
                 },
                 {
                     use_ga: true,
@@ -157,10 +165,14 @@ const useMapHandlers = ({
 
     // Handler untuk mendapatkan rute OSRM
     const handleNavigateToOSM = async (market) => {
-        if (!userLocation) {
+        // Gunakan manual location jika tersedia, jika tidak gunakan user location
+        const originLocation =
+            useManualLocation && manualLocation ? manualLocation : userLocation;
+
+        if (!originLocation) {
             triggerHapticFeedback();
             toast.error(
-                "Lokasi Anda belum diketahui. Silakan klik tombol lokasi terlebih dahulu."
+                "Lokasi asal belum ditentukan. Silakan pilih lokasi GPS atau pilih manual di peta."
             );
             return;
         }
@@ -169,9 +181,9 @@ const useMapHandlers = ({
         triggerHapticFeedback();
 
         try {
-            const { lng: fromLon, lat: fromLat } = userLocation;
+            const { lng: fromLon, lat: fromLat } = originLocation;
             console.log("Navigating to market:", market);
-            console.log("User location:", userLocation);
+            console.log("Origin location:", originLocation);
             const { longitude: toLon, latitude: toLat } = {
                 longitude: market.longitude,
                 latitude: market.latitude,
@@ -189,6 +201,7 @@ const useMapHandlers = ({
                     distance: route.distance,
                     duration: route.duration,
                     destination: market,
+                    origin: originLocation, // Simpan origin untuk tracking
                 });
 
                 // Zoom to fit the route
@@ -210,8 +223,10 @@ const useMapHandlers = ({
                     )} km, Waktu: ${Math.round(route.duration / 60)} menit`
                 );
 
-                // Mulai tracking lokasi untuk update rute real-time
-                startLocationTracking(market);
+                // Mulai tracking lokasi untuk update rute real-time (hanya jika menggunakan GPS)
+                if (!useManualLocation) {
+                    startLocationTracking(market);
+                }
             } else {
                 toast.error("Rute tidak dapat ditemukan");
             }
@@ -322,6 +337,90 @@ const useMapHandlers = ({
         }
     };
 
+    // Handler untuk membuka location picker
+    const handleOpenLocationPicker = () => {
+        triggerHapticFeedback();
+        setIsPickingLocation(true);
+        toast.info("🎯 Klik di peta untuk memilih lokasi asal");
+    };
+
+    // Handler untuk menutup location picker
+    const handleCloseLocationPicker = () => {
+        setShowLocationPicker(false);
+    };
+
+    // Handler untuk toggle picking mode
+    const handleTogglePickingMode = () => {
+        triggerHapticFeedback();
+        const newState = !isPickingLocation;
+        setIsPickingLocation(newState);
+
+        if (newState) {
+            toast.info("🎯 Klik di peta untuk memilih lokasi asal");
+        } else {
+            toast.success("Mode pemilihan lokasi dinonaktifkan");
+        }
+    };
+
+    // Handler untuk map click (untuk pemilihan lokasi langsung di peta)
+    const handleMapClick = (e) => {
+        if (!isPickingLocation) {
+            // Jika tidak dalam mode picking, tidak lakukan apa-apa
+            return;
+        }
+
+        // Set lokasi manual dari klik peta
+        const { lat, lng } = e.latlng;
+        const newLocation = { lat, lng };
+        setManualLocation(newLocation);
+        setUseManualLocation(true);
+        setIsPickingLocation(false); // Matikan mode picking setelah memilih
+
+        // Fokus map ke lokasi yang dipilih
+        const mapInstance = map || mapRef.current;
+        if (mapInstance) {
+            mapInstance.setView([lat, lng], 15, {
+                animate: true,
+                duration: 1,
+            });
+        }
+
+        toast.success("✅ Lokasi asal berhasil dipilih dari peta");
+    }; // Handler untuk set manual location
+    const handleSetManualLocation = (lat, lng) => {
+        const newLocation = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        setManualLocation(newLocation);
+        setUseManualLocation(true);
+        setShowLocationPicker(false);
+        triggerHapticFeedback();
+
+        // Fokus map ke lokasi manual
+        const mapInstance = map || mapRef.current;
+        if (mapInstance) {
+            mapInstance.setView([newLocation.lat, newLocation.lng], 15, {
+                animate: true,
+                duration: 1,
+            });
+        }
+
+        toast.success("Lokasi asal manual berhasil dipilih");
+    };
+
+    // Handler untuk reset ke GPS location
+    const handleResetToGPSLocation = () => {
+        setUseManualLocation(false);
+        setManualLocation(null);
+        triggerHapticFeedback();
+        toast.success("Kembali menggunakan lokasi GPS");
+    };
+
+    // Get current active location (manual or GPS)
+    const getActiveLocation = () => {
+        return useManualLocation && manualLocation
+            ? manualLocation
+            : userLocation;
+    };
+
     return {
         map,
         setMap,
@@ -336,6 +435,10 @@ const useMapHandlers = ({
         routeData,
         isLoadingRoute,
         isTrackingLocation,
+        showLocationPicker,
+        manualLocation,
+        useManualLocation,
+        isPickingLocation,
         setShowMarketList,
         setShowNearbyMarkets,
         handleMarkerClick,
@@ -350,6 +453,13 @@ const useMapHandlers = ({
         handleNavigateToOSM,
         clearRoute,
         stopLocationTracking,
+        handleOpenLocationPicker,
+        handleCloseLocationPicker,
+        handleSetManualLocation,
+        handleResetToGPSLocation,
+        getActiveLocation,
+        handleMapClick,
+        handleTogglePickingMode,
     };
 };
 

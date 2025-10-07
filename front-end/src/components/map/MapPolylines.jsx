@@ -5,8 +5,18 @@ import {
     getPolylineWeight,
 } from "@/utils/map";
 
-const MapPolylines = ({ showNearbyMarkets, nearbyMarkets, userLocation }) => {
-    if (!showNearbyMarkets || !nearbyMarkets?.length || !userLocation) {
+const MapPolylines = ({
+    showNearbyMarkets,
+    nearbyMarkets,
+    userLocation,
+    manualLocation,
+    useManualLocation,
+}) => {
+    // Gunakan manual location jika tersedia, jika tidak gunakan user location
+    const originLocation =
+        useManualLocation && manualLocation ? manualLocation : userLocation;
+
+    if (!showNearbyMarkets || !nearbyMarkets?.length || !originLocation) {
         return null;
     }
 
@@ -22,7 +32,7 @@ const MapPolylines = ({ showNearbyMarkets, nearbyMarkets, userLocation }) => {
                     <Polyline
                         key={`polyline-${market.id}`}
                         positions={[
-                            [userLocation.lat, userLocation.lng],
+                            [originLocation.lat, originLocation.lng],
                             [lat, lng],
                         ]}
                         color={getPolylineColor(index)}
