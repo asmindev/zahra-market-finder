@@ -5,6 +5,10 @@ import {
     Camera,
     ChevronLeft,
     ChevronRight,
+    Star,
+    Clock,
+    Tag,
+    Info,
 } from "lucide-react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "motion/react";
@@ -108,10 +112,41 @@ const MarketDetailCard = ({
                                                 {selectedMarket.location}
                                             </span>
                                         </p>
-                                        {/* description */}
-                                        <div className="p-4 bg-gray-400 rounded">
-                                            <p className="text-gray-50 text-justify">
-                                                {selectedMarket.description}
+
+                                        {/* Eye-catching description */}
+                                        <div className="mt-3 p-4 bg-gradient-to-r from-white to-gray-50 rounded-lg border border-gray-100 shadow-sm">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-amber-100 text-amber-600 p-2 rounded-md">
+                                                        <Star className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-semibold text-gray-900">
+                                                            Deskripsi
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                    <div className="flex items-center gap-1">
+                                                        <Tag className="w-3 h-3" />
+                                                        <span>
+                                                            {selectedMarket.category ||
+                                                                "Umum"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-gray-700 text-sm text-justify mb-3">
+                                                {selectedMarket.description
+                                                    ? selectedMarket.description
+                                                          .length > 220
+                                                        ? `${selectedMarket.description.slice(
+                                                              0,
+                                                              220
+                                                          )}...`
+                                                        : selectedMarket.description
+                                                    : "Deskripsi tidak tersedia."}
                                             </p>
                                         </div>
                                     </div>
@@ -335,10 +370,69 @@ const MarketDetailCard = ({
                                             {selectedMarket.location}
                                         </span>
                                     </p>
-                                    <div className="p-4 bg-gray-400">
-                                        <p className="text-gray-50 text-justify">
-                                            {selectedMarket.description}
+                                    <div className="p-4 bg-gradient-to-r from-white to-gray-50 rounded-lg border border-gray-100 shadow-sm">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-amber-100 text-amber-600 p-2 rounded-md">
+                                                    <Star className="w-4 h-4" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                                                <div className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    <span>
+                                                        {selectedMarket.opening_hours ||
+                                                            "Jam buka tidak tersedia"}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Tag className="w-3 h-3" />
+                                                    <span>
+                                                        {selectedMarket.category ||
+                                                            "Umum"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-gray-700 text-sm text-justify mb-3">
+                                            {selectedMarket.description
+                                                ? selectedMarket.description
+                                                      .length > 200
+                                                    ? `${selectedMarket.description.slice(
+                                                          0,
+                                                          200
+                                                      )}...`
+                                                    : selectedMarket.description
+                                                : "Deskripsi tidak tersedia."}
                                         </p>
+
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() =>
+                                                    onNavigateToDetail &&
+                                                    onNavigateToDetail()
+                                                }
+                                                className="text-emerald-600 hover:bg-emerald-50"
+                                            >
+                                                <Info className="w-4 h-4 mr-2" />
+                                                Lihat Detail
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    onNavigateToLocation &&
+                                                    onNavigateToLocation()
+                                                }
+                                                className="text-gray-700"
+                                            >
+                                                <Navigation className="w-4 h-4 mr-2" />
+                                                Petunjuk Arah
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
 
