@@ -331,7 +331,7 @@ def find_nearby_marketss():
         # Extract and validate coordinates
         latitude = data.get("latitude")
         longitude = data.get("longitude")
-        limit = data.get("limit", 5)  # Default to 5 nearest markets
+        limit = 3  # Default to 5 nearest markets
         use_ga = data.get("use_ga", True)  # Default to using GA
 
         # Validate coordinates
